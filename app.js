@@ -20,6 +20,11 @@ const expenseCategories = [
   { value: "other_expense", label: "Прочее" }
 ];
 
+const categoryMap = {};
+[...incomeCategories, ...expenseCategories].forEach(item => {
+  categoryMap[item.value] = item.label;
+});
+
 const state = {
   telegramId: null,
   username: "Пользователь",
@@ -34,7 +39,9 @@ const state = {
   financeFilter: "all",
   periodFilter: "today",
   customDateFrom: null,
-  customDateTo: null
+  customDateTo: null,
+  searchQuery: "",
+  categoryFilter: "all"
 };
 
 let expenseChart = null;
@@ -61,6 +68,7 @@ const sportModal = document.getElementById("sportModal");
 
 const financeModalTitle = document.getElementById("financeModalTitle");
 const financeTypeInput = document.getElementById("financeType");
+const editingFinanceIdInput = document.getElementById("editingFinanceId");
 const financeAmountInput = document.getElementById("financeAmount");
 const financeCategoryInput = document.getElementById("financeCategory");
 const financeCommentInput = document.getElementById("financeComment");
@@ -92,6 +100,9 @@ const dateFromEl = document.getElementById("dateFrom");
 const dateToEl = document.getElementById("dateTo");
 const applyCustomPeriodBtn = document.getElementById("applyCustomPeriodBtn");
 
+const searchInputEl = document.getElementById("searchInput");
+const categoryFilterEl = document.getElementById("categoryFilter");
+
 function openModal(modal) {
   modal.classList.remove("hidden");
 }
@@ -113,12 +124,24 @@ function initTelegramUser() {
   }
 }
 
-function fillFinanceCategories(type) {
+function fillFinanceCategories(type, selectedValue = null) {
   const list = type === "income" ? incomeCategories : expenseCategories;
 
   financeCategoryInput.innerHTML = list
-    .map(item => `<option value="${item.value}">${item.label}</option>`)
+    .map(item => `
+      <option value="${item.value}" ${selectedValue === item.value ? "selected" : ""}>
+        ${item.label}
+      </option>
+    `)
     .join("");
+}
+
+function fillCategoryFilter() {
+  categoryFilterEl.innerHTML =
+    `<option value="all">Все категории</option>` +
+    [...incomeCategories, ...expenseCategories]
+      .map(item => `<option value="${item.value}">${item.label}</option>`)
+      .join("");
 }
 
 async function ensureProfile() {
@@ -239,7 +262,6 @@ function isInSelectedPeriod(dateString) {
 
     const from = new Date(state.customDateFrom + "T00:00:00");
     const to = new Date(state.customDateTo + "T23:59:59");
-
     return date >= from && date <= to;
   }
 
@@ -255,6 +277,26 @@ function getFilteredOperations() {
 
   operations = operations.filter(item => isInSelectedPeriod(item.created_at));
 
+  if (state.categoryFilter !== "all") {
+    operations = operations.filter(item => item.category === state.categoryFilter);
+  }
+
+  if (state.searchQuery.trim()) {
+    const query = state.searchQuery.trim().toLowerCase();
+
+    operations = operations.filter(item => {
+      const comment = (item.comment || "").toLowerCase();
+      const categoryLabel = (categoryMap[item.category] || item.category || "").toLowerCase();
+      const typeLabel = item.record_type === "income" ? "доход" : "расход";
+
+      return (
+        comment.includes(query) ||
+        categoryLabel.includes(query) ||
+        typeLabel.includes(query)
+      );
+    });
+  }
+
   return operations;
 }
 
@@ -262,7 +304,7 @@ function renderOperations() {
   const operations = getFilteredOperations();
 
   if (!operations.length) {
-    operationsListEl.textContent = "Пока нет операций за выбранный период";
+    operationsListEl.textContent = "Пока нет операций по выбранным фильтрам";
     return;
   }
 
@@ -276,10 +318,13 @@ function renderOperations() {
             </div>
             <div class="operation-date">${formatDate(item.created_at)}</div>
           </div>
-          <button class="delete-btn" data-id="${item.id}" data-kind="finance">Удалить</button>
+          <div class="operation-actions">
+            <button class="edit-btn" data-edit-id="${item.id}">Редактировать</button>
+            <button class="delete-btn" data-id="${item.id}" data-kind="finance">Удалить</button>
+          </div>
         </div>
         <div class="operation-meta">
-          ${item.category}${item.comment ? " | " + item.comment : ""}
+          ${categoryMap[item.category] || item.category}${item.comment ? " | " + item.comment : ""}
         </div>
       </div>
     `)
@@ -289,6 +334,14 @@ function renderOperations() {
     btn.addEventListener("click", async () => {
       const id = btn.dataset.id;
       await deleteFinanceRecord(id);
+    });
+  });
+
+  document.querySelectorAll("[data-edit-id]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const id = Number(btn.dataset.editId);
+      const item = state.operations.find(op => op.id === id);
+      if (item) openEditFinanceModal(item);
     });
   });
 }
@@ -378,7 +431,7 @@ function renderCategoryStats() {
       return `
         <div class="category-row">
           <div class="category-label">
-            <span>${category}</span>
+            <span>${categoryMap[category] || category}</span>
             <strong>${amount}</strong>
           </div>
           <div class="category-bar">
@@ -394,14 +447,13 @@ function renderCategoryStats() {
 
 function renderExpenseChart(grouped) {
   const ctx = document.getElementById("expenseChart");
-
   if (!ctx) return;
 
   if (expenseChart) {
     expenseChart.destroy();
   }
 
-  const labels = Object.keys(grouped);
+  const labels = Object.keys(grouped).map(key => categoryMap[key] || key);
   const values = Object.values(grouped);
 
   if (!labels.length) {
@@ -469,23 +521,26 @@ function renderAll() {
 
 function openFinanceModal(type) {
   financeTypeInput.value = type;
+  editingFinanceIdInput.value = "";
   financeModalTitle.textContent = type === "income" ? "Добавить доход" : "Добавить расход";
   financeAmountInput.value = "";
   financeCommentInput.value = "";
-
   fillFinanceCategories(type);
   openModal(financeModal);
 }
 
-function fillFinanceCategories(type) {
-  const list = type === "income" ? incomeCategories : expenseCategories;
-
-  financeCategoryInput.innerHTML = list
-    .map(item => `<option value="${item.value}">${item.label}</option>`)
-    .join("");
+function openEditFinanceModal(item) {
+  financeTypeInput.value = item.record_type;
+  editingFinanceIdInput.value = item.id;
+  financeModalTitle.textContent = item.record_type === "income" ? "Редактировать доход" : "Редактировать расход";
+  financeAmountInput.value = item.amount;
+  financeCommentInput.value = item.comment || "";
+  fillFinanceCategories(item.record_type, item.category);
+  openModal(financeModal);
 }
 
 async function saveFinance() {
+  const id = editingFinanceIdInput.value;
   const type = financeTypeInput.value;
   const amount = Number(financeAmountInput.value);
   const category = financeCategoryInput.value;
@@ -496,13 +551,32 @@ async function saveFinance() {
     return;
   }
 
-  const { error } = await supabaseClient.from("finance_records").insert({
-    telegram_id: state.telegramId,
-    record_type: type,
-    amount,
-    category,
-    comment
-  });
+  let error = null;
+
+  if (id) {
+    const result = await supabaseClient
+      .from("finance_records")
+      .update({
+        record_type: type,
+        amount,
+        category,
+        comment
+      })
+      .eq("id", id)
+      .eq("telegram_id", state.telegramId);
+
+    error = result.error;
+  } else {
+    const result = await supabaseClient.from("finance_records").insert({
+      telegram_id: state.telegramId,
+      record_type: type,
+      amount,
+      category,
+      comment
+    });
+
+    error = result.error;
+  }
 
   if (error) {
     console.error(error);
@@ -592,6 +666,7 @@ async function saveSport() {
 
 async function initApp() {
   initTelegramUser();
+  fillCategoryFilter();
   await ensureProfile();
   await loadFinance();
   await loadFood();
@@ -651,6 +726,16 @@ applyCustomPeriodBtn.addEventListener("click", () => {
   state.customDateFrom = dateFromEl.value;
   state.customDateTo = dateToEl.value;
   renderAll();
+});
+
+searchInputEl.addEventListener("input", () => {
+  state.searchQuery = searchInputEl.value;
+  renderOperations();
+});
+
+categoryFilterEl.addEventListener("change", () => {
+  state.categoryFilter = categoryFilterEl.value;
+  renderOperations();
 });
 
 openIncomeBtn.addEventListener("click", () => openFinanceModal("income"));

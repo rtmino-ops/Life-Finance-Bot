@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="style.css" />
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
 <body>
   <div class="app">
@@ -64,74 +64,82 @@
         </div>
       </section>
 
-<section class="tab-content" id="finance">
-  <div class="card">
-    <h2>Финансы</h2>
-    <div class="grid">
-      <button id="financeIncomeBtn">Добавить доход</button>
-      <button id="financeExpenseBtn">Добавить расход</button>
-    </div>
-  </div>
+      <section class="tab-content" id="finance">
+        <div class="card">
+          <h2>Финансы</h2>
+          <div class="grid">
+            <button id="financeIncomeBtn">Добавить доход</button>
+            <button id="financeExpenseBtn">Добавить расход</button>
+          </div>
+        </div>
 
-  <div class="card">
-    <h2>Фильтры</h2>
-    <div class="grid">
-      <button class="filter-btn active" data-filter="all">Все</button>
-      <button class="filter-btn" data-filter="income">Доходы</button>
-      <button class="filter-btn" data-filter="expense">Расходы</button>
-    </div>
+        <div class="card">
+          <h2>Фильтры</h2>
+          <div class="grid">
+            <button class="filter-btn active" data-filter="all">Все</button>
+            <button class="filter-btn" data-filter="income">Доходы</button>
+            <button class="filter-btn" data-filter="expense">Расходы</button>
+          </div>
 
-    <div class="period-grid">
-      <button class="period-btn active" data-period="today">Сегодня</button>
-      <button class="period-btn" data-period="7">7 дней</button>
-      <button class="period-btn" data-period="30">30 дней</button>
-      <button class="period-btn" data-period="custom">Период</button>
-    </div>
+          <div class="period-grid">
+            <button class="period-btn active" data-period="today">Сегодня</button>
+            <button class="period-btn" data-period="7">7 дней</button>
+            <button class="period-btn" data-period="30">30 дней</button>
+            <button class="period-btn" data-period="custom">Период</button>
+          </div>
 
-    <div id="customPeriodBox" class="hidden custom-period-box">
-      <label>Дата от</label>
-      <input type="date" id="dateFrom" />
+          <div id="customPeriodBox" class="hidden custom-period-box">
+            <label>Дата от</label>
+            <input type="date" id="dateFrom" />
 
-      <label>Дата до</label>
-      <input type="date" id="dateTo" />
+            <label>Дата до</label>
+            <input type="date" id="dateTo" />
 
-      <button id="applyCustomPeriodBtn">Применить период</button>
-    </div>
-  </div>
+            <button id="applyCustomPeriodBtn">Применить период</button>
+          </div>
 
-  <div class="card">
-    <h2>Аналитика за период</h2>
-    <div class="summary-grid">
-      <div class="summary-item income-box">
-        <span>Доход</span>
-        <strong id="periodIncomeValue">0</strong>
-      </div>
-      <div class="summary-item expense-box">
-        <span>Расход</span>
-        <strong id="periodExpenseValue">0</strong>
-      </div>
-      <div class="summary-item">
-        <span>Баланс</span>
-        <strong id="periodBalanceValue">0</strong>
-      </div>
-    </div>
-  </div>
+          <label>Поиск</label>
+          <input type="text" id="searchInput" placeholder="Поиск по комментарию или категории" />
 
-  <div class="card">
-    <h2>Кольцевая диаграмма расходов</h2>
-    <canvas id="expenseChart"></canvas>
-  </div>
+          <label>Категория</label>
+          <select id="categoryFilter">
+            <option value="all">Все категории</option>
+          </select>
+        </div>
 
-  <div class="card">
-    <h2>Расходы по категориям</h2>
-    <div id="categoryStats">Нет данных</div>
-  </div>
+        <div class="card">
+          <h2>Аналитика за период</h2>
+          <div class="summary-grid">
+            <div class="summary-item income-box">
+              <span>Доход</span>
+              <strong id="periodIncomeValue">0</strong>
+            </div>
+            <div class="summary-item expense-box">
+              <span>Расход</span>
+              <strong id="periodExpenseValue">0</strong>
+            </div>
+            <div class="summary-item">
+              <span>Баланс</span>
+              <strong id="periodBalanceValue">0</strong>
+            </div>
+          </div>
+        </div>
 
-  <div class="card">
-    <h2>Последние операции</h2>
-    <div id="operationsList">Пока нет операций</div>
-  </div>
-</section>
+        <div class="card">
+          <h2>Кольцевая диаграмма расходов</h2>
+          <canvas id="expenseChart"></canvas>
+        </div>
+
+        <div class="card">
+          <h2>Расходы по категориям</h2>
+          <div id="categoryStats">Нет данных</div>
+        </div>
+
+        <div class="card">
+          <h2>Последние операции</h2>
+          <div id="operationsList">Пока нет операций</div>
+        </div>
+      </section>
 
       <section class="tab-content" id="food">
         <div class="card">
@@ -174,6 +182,7 @@
       </div>
 
       <input type="hidden" id="financeType" />
+      <input type="hidden" id="editingFinanceId" />
 
       <label>Сумма</label>
       <input type="number" id="financeAmount" placeholder="Введите сумму" />

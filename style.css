@@ -187,6 +187,17 @@ label {
   margin-bottom: 8px;
 }
 
+.operation-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.edit-btn {
+  background: #f59e0b;
+  padding: 10px 12px;
+  font-size: 13px;
+}
+
 .delete-btn {
   background: #ef4444;
   padding: 10px 12px;
