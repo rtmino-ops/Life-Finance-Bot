@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Life Finance</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div>
+        <h1>Life Finance</h1>
+        <p id="userInfo">Загрузка пользователя...</p>
+      </div>
+      <div class="summary-box">
+        <div>Баланс: <strong id="balanceValue">0</strong></div>
+      </div>
+    </header>
+
+    <nav class="tabs">
+      <button class="tab active" data-tab="home">Главная</button>
+      <button class="tab" data-tab="finance">Финансы</button>
+      <button class="tab" data-tab="food">Питание</button>
+      <button class="tab" data-tab="sport">Спорт</button>
+      <button class="tab" data-tab="settings">Настройки</button>
+    </nav>
+
+    <main>
+      <section class="tab-content active" id="home">
+        <div class="card">
+          <h2>Быстрые действия</h2>
+          <div class="grid">
+            <button id="openIncomeBtn">+ Доход</button>
+            <button id="openExpenseBtn">+ Расход</button>
+            <button id="openFoodBtn">+ Еда</button>
+            <button id="openSportBtn">+ Спорт</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>Сводка</h2>
+          <div class="summary-grid">
+            <div class="summary-item income-box">
+              <span>Доходы</span>
+              <strong id="incomeValue">0</strong>
+            </div>
+            <div class="summary-item expense-box">
+              <span>Расходы</span>
+              <strong id="expenseValue">0</strong>
+            </div>
+            <div class="summary-item">
+              <span>Калории сегодня</span>
+              <strong id="caloriesValue">0</strong>
+            </div>
+            <div class="summary-item">
+              <span>Тренировки</span>
+              <strong id="sportCountValue">0</strong>
+            </div>
+          </div>
+        </div>
+      </section>
+
+<section class="tab-content" id="finance">
+  <div class="card">
+    <h2>Финансы</h2>
+    <div class="grid">
+      <button id="financeIncomeBtn">Добавить доход</button>
+      <button id="financeExpenseBtn">Добавить расход</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Фильтры</h2>
+    <div class="grid">
+      <button class="filter-btn active" data-filter="all">Все</button>
+      <button class="filter-btn" data-filter="income">Доходы</button>
+      <button class="filter-btn" data-filter="expense">Расходы</button>
+    </div>
+
+    <div class="period-grid">
+      <button class="period-btn active" data-period="today">Сегодня</button>
+      <button class="period-btn" data-period="7">7 дней</button>
+      <button class="period-btn" data-period="30">30 дней</button>
+      <button class="period-btn" data-period="custom">Период</button>
+    </div>
+
+    <div id="customPeriodBox" class="hidden custom-period-box">
+      <label>Дата от</label>
+      <input type="date" id="dateFrom" />
+
+      <label>Дата до</label>
+      <input type="date" id="dateTo" />
+
+      <button id="applyCustomPeriodBtn">Применить период</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Аналитика за период</h2>
+    <div class="summary-grid">
+      <div class="summary-item income-box">
+        <span>Доход</span>
+        <strong id="periodIncomeValue">0</strong>
+      </div>
+      <div class="summary-item expense-box">
+        <span>Расход</span>
+        <strong id="periodExpenseValue">0</strong>
+      </div>
+      <div class="summary-item">
+        <span>Баланс</span>
+        <strong id="periodBalanceValue">0</strong>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Кольцевая диаграмма расходов</h2>
+    <canvas id="expenseChart"></canvas>
+  </div>
+
+  <div class="card">
+    <h2>Расходы по категориям</h2>
+    <div id="categoryStats">Нет данных</div>
+  </div>
+
+  <div class="card">
+    <h2>Последние операции</h2>
+    <div id="operationsList">Пока нет операций</div>
+  </div>
+</section>
+
+      <section class="tab-content" id="food">
+        <div class="card">
+          <h2>Питание</h2>
+          <button id="foodAddBtn">Добавить прием пищи</button>
+          <div id="foodList">Пока нет записей</div>
+        </div>
+      </section>
+
+      <section class="tab-content" id="sport">
+        <div class="card">
+          <h2>Спорт</h2>
+          <button id="sportAddBtn">Добавить активность</button>
+          <div id="sportList">Пока нет записей</div>
+        </div>
+      </section>
+
+      <section class="tab-content" id="settings">
+        <div class="card">
+          <h2>Настройки</h2>
+          <p>Тут позже будут:</p>
+          <ul>
+            <li>валюта</li>
+            <li>категории</li>
+            <li>нормы калорий</li>
+            <li>уведомления</li>
+          </ul>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- MODALS -->
+
+  <div class="modal hidden" id="financeModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="financeModalTitle">Новая операция</h3>
+        <button class="close-btn" data-close="financeModal">✕</button>
+      </div>
+
+      <input type="hidden" id="financeType" />
+
+      <label>Сумма</label>
+      <input type="number" id="financeAmount" placeholder="Введите сумму" />
+
+      <label>Категория</label>
+      <select id="financeCategory"></select>
+
+      <label>Комментарий</label>
+      <input type="text" id="financeComment" placeholder="Комментарий" />
+
+      <button id="saveFinanceBtn">Сохранить</button>
+    </div>
+  </div>
+
+  <div class="modal hidden" id="foodModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Добавить прием пищи</h3>
+        <button class="close-btn" data-close="foodModal">✕</button>
+      </div>
+
+      <label>Тип приема пищи</label>
+      <select id="foodType">
+        <option value="Завтрак">Завтрак</option>
+        <option value="Обед">Обед</option>
+        <option value="Ужин">Ужин</option>
+        <option value="Перекус">Перекус</option>
+      </select>
+
+      <label>Описание</label>
+      <input type="text" id="foodName" placeholder="Например: овсянка, яблоко" />
+
+      <label>Калории</label>
+      <input type="number" id="foodCalories" placeholder="Калории" />
+
+      <button id="saveFoodBtn">Сохранить</button>
+    </div>
+  </div>
+
+  <div class="modal hidden" id="sportModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Добавить тренировку</h3>
+        <button class="close-btn" data-close="sportModal">✕</button>
+      </div>
+
+      <label>Тип активности</label>
+      <input type="text" id="sportType" placeholder="Например: отжимания, бег" />
+
+      <label>Количество / длительность</label>
+      <input type="text" id="sportValue" placeholder="Например: 30, 20 мин, 5 км" />
+
+      <button id="saveSportBtn">Сохранить</button>
+    </div>
+  </div>
+
+  <script src="supabase.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

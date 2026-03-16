@@ -1,0 +1,12 @@
+{
+  "name": "life-finance-mini-app",
+  "version": "1.0.0",
+  "description": "Telegram mini app for finance, food and sport tracking",
+  "main": "bot.js",
+  "scripts": {
+    "start-bot": "node bot.js"
+  },
+  "dependencies": {
+    "node-telegram-bot-api": "^0.66.0"
+  }
+}
