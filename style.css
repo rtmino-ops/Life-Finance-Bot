@@ -265,6 +265,33 @@ label {
   color: #15803d;
 }
 
+.reminder-item {
+  padding: 12px;
+  border-radius: 12px;
+  background: #fff7ed;
+  border: 1px solid #fdba74;
+  margin-bottom: 10px;
+}
+
+.recurring-item {
+  padding: 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  margin-bottom: 10px;
+}
+
+.recurring-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.recurring-pay-btn {
+  background: #16a34a;
+  font-size: 13px;
+  padding: 10px 12px;
+}
+
 .modal {
   position: fixed;
   inset: 0;

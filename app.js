@@ -36,6 +36,7 @@ const state = {
   operations: [],
   food: [],
   sport: [],
+  recurring: [],
   financeFilter: "all",
   periodFilter: "today",
   customDateFrom: null,
@@ -54,6 +55,7 @@ const incomeValueEl = document.getElementById("incomeValue");
 const expenseValueEl = document.getElementById("expenseValue");
 const caloriesValueEl = document.getElementById("caloriesValue");
 const sportCountValueEl = document.getElementById("sportCountValue");
+const remindersListEl = document.getElementById("remindersList");
 
 const periodIncomeValueEl = document.getElementById("periodIncomeValue");
 const periodExpenseValueEl = document.getElementById("periodExpenseValue");
@@ -72,6 +74,17 @@ const categoryBudgetCategoryEl = document.getElementById("categoryBudgetCategory
 const categoryBudgetAmountEl = document.getElementById("categoryBudgetAmount");
 const saveCategoryBudgetBtn = document.getElementById("saveCategoryBudgetBtn");
 const categoryBudgetListEl = document.getElementById("categoryBudgetList");
+
+const openRecurringBtn = document.getElementById("openRecurringBtn");
+const recurringListEl = document.getElementById("recurringList");
+
+const recurringModal = document.getElementById("recurringModal");
+const recurringTitleEl = document.getElementById("recurringTitle");
+const recurringAmountEl = document.getElementById("recurringAmount");
+const recurringCategoryEl = document.getElementById("recurringCategory");
+const recurringDayEl = document.getElementById("recurringDay");
+const recurringCommentEl = document.getElementById("recurringComment");
+const saveRecurringBtn = document.getElementById("saveRecurringBtn");
 
 const operationsListEl = document.getElementById("operationsList");
 const foodListEl = document.getElementById("foodList");
@@ -170,6 +183,12 @@ function fillCategoryBudgetSelect() {
     .join("");
 }
 
+function fillRecurringCategorySelect() {
+  recurringCategoryEl.innerHTML = expenseCategories
+    .map(item => `<option value="${item.value}">${item.label}</option>`)
+    .join("");
+}
+
 async function ensureProfile() {
   if (!supabaseClient || !state.telegramId) return;
 
@@ -215,16 +234,11 @@ async function loadFinance() {
 async function loadFood() {
   if (!supabaseClient || !state.telegramId) return;
 
-  const { data, error } = await supabaseClient
+  const { data } = await supabaseClient
     .from("food_records")
     .select("*")
     .eq("telegram_id", state.telegramId)
     .order("created_at", { ascending: false });
-
-  if (error) {
-    console.error(error);
-    return;
-  }
 
   state.food = data || [];
   state.calories = state.food.reduce((sum, item) => sum + Number(item.calories || 0), 0);
@@ -233,16 +247,11 @@ async function loadFood() {
 async function loadSport() {
   if (!supabaseClient || !state.telegramId) return;
 
-  const { data, error } = await supabaseClient
+  const { data } = await supabaseClient
     .from("sport_records")
     .select("*")
     .eq("telegram_id", state.telegramId)
     .order("created_at", { ascending: false });
-
-  if (error) {
-    console.error(error);
-    return;
-  }
 
   state.sport = data || [];
   state.sportCount = state.sport.length;
@@ -269,6 +278,19 @@ async function loadBudgets() {
     .eq("month_key", monthKey);
 
   state.categoryBudgets = categoryData || [];
+}
+
+async function loadRecurring() {
+  if (!supabaseClient || !state.telegramId) return;
+
+  const { data } = await supabaseClient
+    .from("recurring_payments")
+    .select("*")
+    .eq("telegram_id", state.telegramId)
+    .eq("is_active", true)
+    .order("day_of_month", { ascending: true });
+
+  state.recurring = data || [];
 }
 
 function renderSummary() {
@@ -509,18 +531,11 @@ function renderExpenseChart(grouped) {
       type: "doughnut",
       data: {
         labels: ["Нет данных"],
-        datasets: [
-          {
-            data: [1],
-            backgroundColor: ["#e5e7eb"]
-          }
-        ]
+        datasets: [{ data: [1], backgroundColor: ["#e5e7eb"] }]
       },
       options: {
         plugins: {
-          legend: {
-            position: "bottom"
-          }
+          legend: { position: "bottom" }
         }
       }
     });
@@ -550,9 +565,7 @@ function renderExpenseChart(grouped) {
     options: {
       responsive: true,
       plugins: {
-        legend: {
-          position: "bottom"
-        }
+        legend: { position: "bottom" }
       }
     }
   });
@@ -577,7 +590,6 @@ function renderBudgetBlock() {
 
   let percent = 0;
   if (budget > 0) percent = Math.min((spent / budget) * 100, 100);
-
   monthlyBudgetBarEl.style.width = `${percent}%`;
 
   budgetWarningEl.classList.add("hidden");
@@ -636,6 +648,79 @@ function renderCategoryBudgets() {
     .join("");
 }
 
+function getReminders() {
+  const reminders = [];
+  const today = new Date().getDate();
+  const monthKey = getMonthKey();
+
+  const monthExpenses = state.operations.filter(item => {
+    const date = new Date(item.created_at);
+    const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+    return item.record_type === "expense" && key === monthKey;
+  });
+
+  state.recurring.forEach(item => {
+    if (item.day_of_month === today) {
+      reminders.push(`Сегодня регулярный платеж: ${item.title} — ${item.amount}`);
+    } else if (item.day_of_month > today && item.day_of_month - today <= 3) {
+      reminders.push(`Скоро платеж: ${item.title} (${item.day_of_month} числа)`);
+    }
+  });
+
+  if (state.monthlyBudget > 0) {
+    const spent = monthExpenses.reduce((sum, item) => sum + Number(item.amount), 0);
+    if (spent >= state.monthlyBudget) {
+      reminders.push("Месячный бюджет превышен");
+    } else if (spent >= state.monthlyBudget * 0.8) {
+      reminders.push("Бюджет месяца почти исчерпан");
+    }
+  }
+
+  return reminders;
+}
+
+function renderReminders() {
+  const reminders = getReminders();
+
+  if (!reminders.length) {
+    remindersListEl.textContent = "Пока нет напоминаний";
+    return;
+  }
+
+  remindersListEl.innerHTML = reminders
+    .map(item => `<div class="reminder-item">${item}</div>`)
+    .join("");
+}
+
+function renderRecurring() {
+  if (!state.recurring.length) {
+    recurringListEl.textContent = "Пока нет регулярных платежей";
+    return;
+  }
+
+  recurringListEl.innerHTML = state.recurring
+    .map(item => `
+      <div class="recurring-item">
+        <strong>${item.title}</strong> — ${item.amount}
+        <br />
+        <small>${categoryMap[item.category] || item.category} | ${item.day_of_month} числа</small>
+        ${item.comment ? `<br /><small>${item.comment}</small>` : ""}
+        <div class="recurring-actions">
+          <button class="recurring-pay-btn" data-pay-id="${item.id}">Учесть платеж</button>
+        </div>
+      </div>
+    `)
+    .join("");
+
+  document.querySelectorAll("[data-pay-id]").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const id = Number(btn.dataset.payId);
+      const item = state.recurring.find(x => x.id === id);
+      if (item) await applyRecurringPayment(item);
+    });
+  });
+}
+
 function renderAll() {
   renderSummary();
   renderOperations();
@@ -645,6 +730,8 @@ function renderAll() {
   renderCategoryStats();
   renderBudgetBlock();
   renderCategoryBudgets();
+  renderRecurring();
+  renderReminders();
 }
 
 function openFinanceModal(type) {
@@ -684,12 +771,7 @@ async function saveFinance() {
   if (id) {
     const result = await supabaseClient
       .from("finance_records")
-      .update({
-        record_type: type,
-        amount,
-        category,
-        comment
-      })
+      .update({ record_type: type, amount, category, comment })
       .eq("id", id)
       .eq("telegram_id", state.telegramId);
 
@@ -833,6 +915,67 @@ async function saveCategoryBudget() {
   renderAll();
 }
 
+async function saveRecurringPayment() {
+  const title = recurringTitleEl.value.trim();
+  const amount = Number(recurringAmountEl.value);
+  const category = recurringCategoryEl.value;
+  const day_of_month = Number(recurringDayEl.value);
+  const comment = recurringCommentEl.value.trim();
+
+  if (!title || !amount || amount <= 0 || !day_of_month || day_of_month < 1 || day_of_month > 31) {
+    alert("Заполни корректно все поля");
+    return;
+  }
+
+  const { error } = await supabaseClient
+    .from("recurring_payments")
+    .insert({
+      telegram_id: state.telegramId,
+      title,
+      amount,
+      category,
+      day_of_month,
+      comment,
+      is_active: true
+    });
+
+  if (error) {
+    console.error(error);
+    alert("Ошибка сохранения регулярного платежа");
+    return;
+  }
+
+  recurringTitleEl.value = "";
+  recurringAmountEl.value = "";
+  recurringDayEl.value = "";
+  recurringCommentEl.value = "";
+
+  closeModal(recurringModal);
+  await loadRecurring();
+  renderAll();
+}
+
+async function applyRecurringPayment(item) {
+  const { error } = await supabaseClient
+    .from("finance_records")
+    .insert({
+      telegram_id: state.telegramId,
+      record_type: "expense",
+      amount: item.amount,
+      category: item.category,
+      comment: item.comment || `Регулярный платеж: ${item.title}`
+    });
+
+  if (error) {
+    console.error(error);
+    alert("Ошибка добавления платежа");
+    return;
+  }
+
+  await loadFinance();
+  renderAll();
+}
+
 async function saveFood() {
   const meal_type = foodTypeInput.value;
   const title = foodNameInput.value.trim();
@@ -895,11 +1038,13 @@ async function initApp() {
   initTelegramUser();
   fillCategoryFilter();
   fillCategoryBudgetSelect();
+  fillRecurringCategorySelect();
   await ensureProfile();
   await loadFinance();
   await loadFood();
   await loadSport();
   await loadBudgets();
+  await loadRecurring();
   renderAll();
 }
 
@@ -978,10 +1123,13 @@ foodAddBtn.addEventListener("click", () => openModal(foodModal));
 openSportBtn.addEventListener("click", () => openModal(sportModal));
 sportAddBtn.addEventListener("click", () => openModal(sportModal));
 
+openRecurringBtn.addEventListener("click", () => openModal(recurringModal));
+
 saveFinanceBtn.addEventListener("click", saveFinance);
 saveFoodBtn.addEventListener("click", saveFood);
 saveSportBtn.addEventListener("click", saveSport);
 saveMonthlyBudgetBtn.addEventListener("click", saveMonthlyBudget);
 saveCategoryBudgetBtn.addEventListener("click", saveCategoryBudget);
+saveRecurringBtn.addEventListener("click", saveRecurringPayment);
 
-initApp();Ы
+initApp();

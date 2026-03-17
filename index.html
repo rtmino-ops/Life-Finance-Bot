@@ -62,6 +62,11 @@
             </div>
           </div>
         </div>
+
+        <div class="card">
+          <h2>Напоминания</h2>
+          <div id="remindersList">Пока нет напоминаний</div>
+        </div>
       </section>
 
       <section class="tab-content" id="finance">
@@ -142,6 +147,12 @@
         </div>
 
         <div class="card">
+          <h2>Регулярные платежи</h2>
+          <button id="openRecurringBtn">Добавить регулярный платеж</button>
+          <div id="recurringList">Пока нет регулярных платежей</div>
+        </div>
+
+        <div class="card">
           <h2>Аналитика за период</h2>
           <div class="summary-grid">
             <div class="summary-item income-box">
@@ -206,8 +217,7 @@
     </main>
   </div>
 
-  <!-- MODALS -->
-
+  <!-- FINANCE MODAL -->
   <div class="modal hidden" id="financeModal">
     <div class="modal-content">
       <div class="modal-header">
@@ -231,6 +241,7 @@
     </div>
   </div>
 
+  <!-- FOOD MODAL -->
   <div class="modal hidden" id="foodModal">
     <div class="modal-content">
       <div class="modal-header">
@@ -256,6 +267,7 @@
     </div>
   </div>
 
+  <!-- SPORT MODAL -->
   <div class="modal hidden" id="sportModal">
     <div class="modal-content">
       <div class="modal-header">
@@ -270,6 +282,33 @@
       <input type="text" id="sportValue" placeholder="Например: 30, 20 мин, 5 км" />
 
       <button id="saveSportBtn">Сохранить</button>
+    </div>
+  </div>
+
+  <!-- RECURRING MODAL -->
+  <div class="modal hidden" id="recurringModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Регулярный платеж</h3>
+        <button class="close-btn" data-close="recurringModal">✕</button>
+      </div>
+
+      <label>Название</label>
+      <input type="text" id="recurringTitle" placeholder="Например: аренда, интернет, спортзал" />
+
+      <label>Сумма</label>
+      <input type="number" id="recurringAmount" placeholder="Сумма" />
+
+      <label>Категория</label>
+      <select id="recurringCategory"></select>
+
+      <label>День месяца</label>
+      <input type="number" id="recurringDay" placeholder="Например 5" min="1" max="31" />
+
+      <label>Комментарий</label>
+      <input type="text" id="recurringComment" placeholder="Комментарий" />
+
+      <button id="saveRecurringBtn">Сохранить</button>
     </div>
   </div>
 
