@@ -233,6 +233,38 @@ label {
   padding-top: 8px;
 }
 
+.budget-box {
+  margin-top: 16px;
+  background: #f9fafb;
+  border-radius: 14px;
+  padding: 14px;
+}
+
+.warning-box {
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 12px;
+  background: #fee2e2;
+  color: #991b1b;
+  font-weight: bold;
+}
+
+.budget-row {
+  margin-bottom: 14px;
+}
+
+.budget-row strong.red {
+  color: #b91c1c;
+}
+
+.budget-row strong.yellow {
+  color: #b45309;
+}
+
+.budget-row strong.green {
+  color: #15803d;
+}
+
 .modal {
   position: fixed;
   inset: 0;

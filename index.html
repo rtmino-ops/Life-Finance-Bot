@@ -108,6 +108,40 @@
         </div>
 
         <div class="card">
+          <h2>Бюджет месяца</h2>
+          <label>Общий бюджет на месяц</label>
+          <input type="number" id="monthlyBudgetInput" placeholder="Например 50000" />
+          <button id="saveMonthlyBudgetBtn">Сохранить бюджет</button>
+
+          <div class="budget-box">
+            <p>Лимит: <strong id="monthlyBudgetValue">0</strong></p>
+            <p>Потрачено: <strong id="monthlySpentValue">0</strong></p>
+            <p>Осталось: <strong id="monthlyLeftValue">0</strong></p>
+            <div class="category-bar">
+              <div id="monthlyBudgetBar" class="category-bar-fill"></div>
+            </div>
+          </div>
+
+          <div id="budgetWarning" class="warning-box hidden"></div>
+        </div>
+
+        <div class="card">
+          <h2>Лимит по категории</h2>
+          <label>Категория</label>
+          <select id="categoryBudgetCategory"></select>
+
+          <label>Лимит</label>
+          <input type="number" id="categoryBudgetAmount" placeholder="Например 10000" />
+
+          <button id="saveCategoryBudgetBtn">Сохранить лимит</button>
+        </div>
+
+        <div class="card">
+          <h2>Лимиты по категориям</h2>
+          <div id="categoryBudgetList">Лимиты пока не заданы</div>
+        </div>
+
+        <div class="card">
           <h2>Аналитика за период</h2>
           <div class="summary-grid">
             <div class="summary-item income-box">

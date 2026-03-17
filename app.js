@@ -41,7 +41,9 @@ const state = {
   customDateFrom: null,
   customDateTo: null,
   searchQuery: "",
-  categoryFilter: "all"
+  categoryFilter: "all",
+  monthlyBudget: 0,
+  categoryBudgets: []
 };
 
 let expenseChart = null;
@@ -57,6 +59,19 @@ const periodIncomeValueEl = document.getElementById("periodIncomeValue");
 const periodExpenseValueEl = document.getElementById("periodExpenseValue");
 const periodBalanceValueEl = document.getElementById("periodBalanceValue");
 const categoryStatsEl = document.getElementById("categoryStats");
+
+const monthlyBudgetInputEl = document.getElementById("monthlyBudgetInput");
+const saveMonthlyBudgetBtn = document.getElementById("saveMonthlyBudgetBtn");
+const monthlyBudgetValueEl = document.getElementById("monthlyBudgetValue");
+const monthlySpentValueEl = document.getElementById("monthlySpentValue");
+const monthlyLeftValueEl = document.getElementById("monthlyLeftValue");
+const monthlyBudgetBarEl = document.getElementById("monthlyBudgetBar");
+const budgetWarningEl = document.getElementById("budgetWarning");
+
+const categoryBudgetCategoryEl = document.getElementById("categoryBudgetCategory");
+const categoryBudgetAmountEl = document.getElementById("categoryBudgetAmount");
+const saveCategoryBudgetBtn = document.getElementById("saveCategoryBudgetBtn");
+const categoryBudgetListEl = document.getElementById("categoryBudgetList");
 
 const operationsListEl = document.getElementById("operationsList");
 const foodListEl = document.getElementById("foodList");
@@ -124,6 +139,11 @@ function initTelegramUser() {
   }
 }
 
+function getMonthKey() {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+}
+
 function fillFinanceCategories(type, selectedValue = null) {
   const list = type === "income" ? incomeCategories : expenseCategories;
 
@@ -142,6 +162,12 @@ function fillCategoryFilter() {
     [...incomeCategories, ...expenseCategories]
       .map(item => `<option value="${item.value}">${item.label}</option>`)
       .join("");
+}
+
+function fillCategoryBudgetSelect() {
+  categoryBudgetCategoryEl.innerHTML = expenseCategories
+    .map(item => `<option value="${item.value}">${item.label}</option>`)
+    .join("");
 }
 
 async function ensureProfile() {
@@ -222,6 +248,29 @@ async function loadSport() {
   state.sportCount = state.sport.length;
 }
 
+async function loadBudgets() {
+  if (!supabaseClient || !state.telegramId) return;
+
+  const monthKey = getMonthKey();
+
+  const { data: budgetData } = await supabaseClient
+    .from("budgets")
+    .select("*")
+    .eq("telegram_id", state.telegramId)
+    .eq("month_key", monthKey)
+    .maybeSingle();
+
+  state.monthlyBudget = budgetData ? Number(budgetData.total_budget) : 0;
+
+  const { data: categoryData } = await supabaseClient
+    .from("category_budgets")
+    .select("*")
+    .eq("telegram_id", state.telegramId)
+    .eq("month_key", monthKey);
+
+  state.categoryBudgets = categoryData || [];
+}
+
 function renderSummary() {
   state.balance = state.income - state.expense;
 
@@ -259,7 +308,6 @@ function isInSelectedPeriod(dateString) {
 
   if (state.periodFilter === "custom") {
     if (!state.customDateFrom || !state.customDateTo) return true;
-
     const from = new Date(state.customDateFrom + "T00:00:00");
     const to = new Date(state.customDateTo + "T23:59:59");
     return date >= from && date <= to;
@@ -510,6 +558,84 @@ function renderExpenseChart(grouped) {
   });
 }
 
+function renderBudgetBlock() {
+  const monthKey = getMonthKey();
+
+  const monthExpenses = state.operations.filter(item => {
+    const date = new Date(item.created_at);
+    const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+    return item.record_type === "expense" && key === monthKey;
+  });
+
+  const spent = monthExpenses.reduce((sum, item) => sum + Number(item.amount), 0);
+  const budget = Number(state.monthlyBudget || 0);
+  const left = budget - spent;
+
+  monthlyBudgetValueEl.textContent = budget;
+  monthlySpentValueEl.textContent = spent;
+  monthlyLeftValueEl.textContent = left;
+
+  let percent = 0;
+  if (budget > 0) percent = Math.min((spent / budget) * 100, 100);
+
+  monthlyBudgetBarEl.style.width = `${percent}%`;
+
+  budgetWarningEl.classList.add("hidden");
+  budgetWarningEl.textContent = "";
+
+  if (budget > 0 && spent >= budget) {
+    budgetWarningEl.textContent = "Бюджет месяца превышен";
+    budgetWarningEl.classList.remove("hidden");
+  } else if (budget > 0 && spent >= budget * 0.8) {
+    budgetWarningEl.textContent = "Внимание: использовано более 80% бюджета";
+    budgetWarningEl.classList.remove("hidden");
+  }
+}
+
+function renderCategoryBudgets() {
+  const monthKey = getMonthKey();
+
+  const monthExpenses = state.operations.filter(item => {
+    const date = new Date(item.created_at);
+    const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+    return item.record_type === "expense" && key === monthKey;
+  });
+
+  if (!state.categoryBudgets.length) {
+    categoryBudgetListEl.textContent = "Лимиты пока не заданы";
+    return;
+  }
+
+  categoryBudgetListEl.innerHTML = state.categoryBudgets
+    .map(item => {
+      const spent = monthExpenses
+        .filter(exp => exp.category === item.category)
+        .reduce((sum, exp) => sum + Number(exp.amount), 0);
+
+      const limit = Number(item.limit_amount);
+      const left = limit - spent;
+      const percent = limit > 0 ? Math.min((spent / limit) * 100, 100) : 0;
+
+      let colorClass = "green";
+      if (spent >= limit) colorClass = "red";
+      else if (spent >= limit * 0.8) colorClass = "yellow";
+
+      return `
+        <div class="budget-row">
+          <div class="category-label">
+            <span>${categoryMap[item.category] || item.category}</span>
+            <strong class="${colorClass}">${spent} / ${limit}</strong>
+          </div>
+          <div class="category-bar">
+            <div class="category-bar-fill" style="width:${percent}%"></div>
+          </div>
+          <small>Осталось: ${left}</small>
+        </div>
+      `;
+    })
+    .join("");
+}
+
 function renderAll() {
   renderSummary();
   renderOperations();
@@ -517,6 +643,8 @@ function renderAll() {
   renderSport();
   renderPeriodAnalytics();
   renderCategoryStats();
+  renderBudgetBlock();
+  renderCategoryBudgets();
 }
 
 function openFinanceModal(type) {
@@ -606,6 +734,105 @@ async function deleteFinanceRecord(id) {
   renderAll();
 }
 
+async function saveMonthlyBudget() {
+  const total_budget = Number(monthlyBudgetInputEl.value);
+  const month_key = getMonthKey();
+
+  if (!total_budget || total_budget <= 0) {
+    alert("Введите бюджет");
+    return;
+  }
+
+  const { data } = await supabaseClient
+    .from("budgets")
+    .select("*")
+    .eq("telegram_id", state.telegramId)
+    .eq("month_key", month_key)
+    .maybeSingle();
+
+  let error = null;
+
+  if (data) {
+    const result = await supabaseClient
+      .from("budgets")
+      .update({ total_budget })
+      .eq("id", data.id);
+
+    error = result.error;
+  } else {
+    const result = await supabaseClient
+      .from("budgets")
+      .insert({
+        telegram_id: state.telegramId,
+        month_key,
+        total_budget
+      });
+
+    error = result.error;
+  }
+
+  if (error) {
+    console.error(error);
+    alert("Ошибка сохранения бюджета");
+    return;
+  }
+
+  monthlyBudgetInputEl.value = "";
+  await loadBudgets();
+  renderAll();
+}
+
+async function saveCategoryBudget() {
+  const category = categoryBudgetCategoryEl.value;
+  const limit_amount = Number(categoryBudgetAmountEl.value);
+  const month_key = getMonthKey();
+
+  if (!limit_amount || limit_amount <= 0) {
+    alert("Введите лимит");
+    return;
+  }
+
+  const { data } = await supabaseClient
+    .from("category_budgets")
+    .select("*")
+    .eq("telegram_id", state.telegramId)
+    .eq("month_key", month_key)
+    .eq("category", category)
+    .maybeSingle();
+
+  let error = null;
+
+  if (data) {
+    const result = await supabaseClient
+      .from("category_budgets")
+      .update({ limit_amount })
+      .eq("id", data.id);
+
+    error = result.error;
+  } else {
+    const result = await supabaseClient
+      .from("category_budgets")
+      .insert({
+        telegram_id: state.telegramId,
+        month_key,
+        category,
+        limit_amount
+      });
+
+    error = result.error;
+  }
+
+  if (error) {
+    console.error(error);
+    alert("Ошибка сохранения лимита");
+    return;
+  }
+
+  categoryBudgetAmountEl.value = "";
+  await loadBudgets();
+  renderAll();
+}
+
 async function saveFood() {
   const meal_type = foodTypeInput.value;
   const title = foodNameInput.value.trim();
@@ -667,10 +894,12 @@ async function saveSport() {
 async function initApp() {
   initTelegramUser();
   fillCategoryFilter();
+  fillCategoryBudgetSelect();
   await ensureProfile();
   await loadFinance();
   await loadFood();
   await loadSport();
+  await loadBudgets();
   renderAll();
 }
 
@@ -752,5 +981,7 @@ sportAddBtn.addEventListener("click", () => openModal(sportModal));
 saveFinanceBtn.addEventListener("click", saveFinance);
 saveFoodBtn.addEventListener("click", saveFood);
 saveSportBtn.addEventListener("click", saveSport);
+saveMonthlyBudgetBtn.addEventListener("click", saveMonthlyBudget);
+saveCategoryBudgetBtn.addEventListener("click", saveCategoryBudget);
 
-initApp();
+initApp();Ы
