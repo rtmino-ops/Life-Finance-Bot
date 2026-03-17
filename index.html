@@ -63,6 +63,17 @@
       </div>
     </div>
   </div>
+
+  <div class="card">
+    <h2>Напоминания</h2>
+    <div id="remindersList">Пока нет напоминаний</div>
+  </div>
+
+  <div class="card">
+    <h2>Цели накоплений</h2>
+    <button id="openGoalBtn">Добавить цель</button>
+    <div id="goalsList">Пока нет целей</div>
+  </div>
 </section>
 
       <section class="tab-content" id="finance">
@@ -353,7 +364,45 @@
       <button id="savePlannerBtn">Сохранить</button>
     </div>
   </div>
+<div class="modal hidden" id="goalModal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3>Цель накоплений</h3>
+      <button class="close-btn" data-close="goalModal">✕</button>
+    </div>
 
+    <label>Название цели</label>
+    <input type="text" id="goalTitle" placeholder="Например: отпуск, ноутбук" />
+
+    <label>Сумма цели</label>
+    <input type="number" id="goalTargetAmount" placeholder="Например 100000" />
+
+    <button id="saveGoalBtn">Сохранить</button>
+  </div>
+</div>
+<div class="modal hidden" id="plannerModal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3>Новая задача</h3>
+      <button class="close-btn" data-close="plannerModal">✕</button>
+    </div>
+
+    <label>Название задачи</label>
+    <input type="text" id="plannerTitle" placeholder="Например: повесить полку" />
+
+    <label>Тип периода</label>
+    <select id="plannerPeriod">
+      <option value="day">День</option>
+      <option value="week">Неделя</option>
+      <option value="month">Месяц</option>
+    </select>
+
+    <label>Дата / срок</label>
+    <input type="date" id="plannerDate" />
+
+    <button id="savePlannerBtn">Сохранить</button>
+  </div>
+</div>
   <script src="supabase.js"></script>
   <script src="app.js"></script>
 </body>

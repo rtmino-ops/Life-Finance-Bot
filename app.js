@@ -151,11 +151,11 @@ const searchInputEl = document.getElementById("searchInput");
 const categoryFilterEl = document.getElementById("categoryFilter");
 
 function openModal(modal) {
-  modal.classList.remove("hidden");
+  if (modal) modal.classList.remove("hidden");
 }
 
 function closeModal(modal) {
-  modal.classList.add("hidden");
+  if (modal) modal.classList.add("hidden");
 }
 
 function initTelegramUser() {
@@ -163,11 +163,15 @@ function initTelegramUser() {
     const user = tg.initDataUnsafe.user;
     state.telegramId = user.id;
     state.username = user.first_name || "Пользователь";
-    userInfoEl.textContent = `Telegram ID: ${state.telegramId} | ${state.username}`;
+    if (userInfoEl) {
+      userInfoEl.textContent = `Telegram ID: ${state.telegramId} | ${state.username}`;
+    }
   } else {
     state.telegramId = 999999;
     state.username = "Test User";
-    userInfoEl.textContent = `Тестовый режим | Telegram ID: ${state.telegramId}`;
+    if (userInfoEl) {
+      userInfoEl.textContent = `Тестовый режим | Telegram ID: ${state.telegramId}`;
+    }
   }
 }
 
@@ -177,8 +181,9 @@ function getMonthKey() {
 }
 
 function fillFinanceCategories(type, selectedValue = null) {
-  const list = type === "income" ? incomeCategories : expenseCategories;
+  if (!financeCategoryInput) return;
 
+  const list = type === "income" ? incomeCategories : expenseCategories;
   financeCategoryInput.innerHTML = list
     .map(item => `
       <option value="${item.value}" ${selectedValue === item.value ? "selected" : ""}>
@@ -189,6 +194,7 @@ function fillFinanceCategories(type, selectedValue = null) {
 }
 
 function fillCategoryFilter() {
+  if (!categoryFilterEl) return;
   categoryFilterEl.innerHTML =
     `<option value="all">Все категории</option>` +
     [...incomeCategories, ...expenseCategories]
@@ -197,12 +203,14 @@ function fillCategoryFilter() {
 }
 
 function fillCategoryBudgetSelect() {
+  if (!categoryBudgetCategoryEl) return;
   categoryBudgetCategoryEl.innerHTML = expenseCategories
     .map(item => `<option value="${item.value}">${item.label}</option>`)
     .join("");
 }
 
 function fillRecurringCategorySelect() {
+  if (!recurringCategoryEl) return;
   recurringCategoryEl.innerHTML = expenseCategories
     .map(item => `<option value="${item.value}">${item.label}</option>`)
     .join("");
@@ -226,11 +234,13 @@ async function ensureProfile() {
 }
 
 async function loadFinance() {
-  const { data } = await supabaseClient
+  const { data, error } = await supabaseClient
     .from("finance_records")
     .select("*")
     .eq("telegram_id", state.telegramId)
     .order("created_at", { ascending: false });
+
+  if (error) throw error;
 
   state.operations = data || [];
   state.income = state.operations.filter(i => i.record_type === "income").reduce((s, i) => s + Number(i.amount), 0);
@@ -238,22 +248,26 @@ async function loadFinance() {
 }
 
 async function loadFood() {
-  const { data } = await supabaseClient
+  const { data, error } = await supabaseClient
     .from("food_records")
     .select("*")
     .eq("telegram_id", state.telegramId)
     .order("created_at", { ascending: false });
+
+  if (error) throw error;
 
   state.food = data || [];
   state.calories = state.food.reduce((s, i) => s + Number(i.calories || 0), 0);
 }
 
 async function loadSport() {
-  const { data } = await supabaseClient
+  const { data, error } = await supabaseClient
     .from("sport_records")
     .select("*")
     .eq("telegram_id", state.telegramId)
     .order("created_at", { ascending: false });
+
+  if (error) throw error;
 
   state.sport = data || [];
   state.sportCount = state.sport.length;
@@ -262,51 +276,61 @@ async function loadSport() {
 async function loadBudgets() {
   const monthKey = getMonthKey();
 
-  const { data: budgetData } = await supabaseClient
+  const { data: budgetData, error: budgetError } = await supabaseClient
     .from("budgets")
     .select("*")
     .eq("telegram_id", state.telegramId)
     .eq("month_key", monthKey)
     .maybeSingle();
 
+  if (budgetError) throw budgetError;
+
   state.monthlyBudget = budgetData ? Number(budgetData.total_budget) : 0;
 
-  const { data: categoryData } = await supabaseClient
+  const { data: categoryData, error: categoryError } = await supabaseClient
     .from("category_budgets")
     .select("*")
     .eq("telegram_id", state.telegramId)
     .eq("month_key", monthKey);
 
+  if (categoryError) throw categoryError;
+
   state.categoryBudgets = categoryData || [];
 }
 
 async function loadRecurring() {
-  const { data } = await supabaseClient
+  const { data, error } = await supabaseClient
     .from("recurring_payments")
     .select("*")
     .eq("telegram_id", state.telegramId)
     .eq("is_active", true)
     .order("day_of_month", { ascending: true });
 
+  if (error) throw error;
+
   state.recurring = data || [];
 }
 
 async function loadGoals() {
-  const { data } = await supabaseClient
+  const { data, error } = await supabaseClient
     .from("saving_goals")
     .select("*")
     .eq("telegram_id", state.telegramId)
     .order("created_at", { ascending: false });
 
+  if (error) throw error;
+
   state.goals = data || [];
 }
 
 async function loadPlanner() {
-  const { data } = await supabaseClient
+  const { data, error } = await supabaseClient
     .from("planner_tasks")
     .select("*")
     .eq("telegram_id", state.telegramId)
     .order("created_at", { ascending: false });
+
+  if (error) throw error;
 
   state.planner = data || [];
 }
@@ -368,14 +392,16 @@ function getFilteredOperations() {
 
 function renderSummary() {
   state.balance = state.income - state.expense;
-  balanceValueEl.textContent = state.balance;
-  incomeValueEl.textContent = state.income;
-  expenseValueEl.textContent = state.expense;
-  caloriesValueEl.textContent = state.calories;
-  sportCountValueEl.textContent = state.sportCount;
+  if (balanceValueEl) balanceValueEl.textContent = state.balance;
+  if (incomeValueEl) incomeValueEl.textContent = state.income;
+  if (expenseValueEl) expenseValueEl.textContent = state.expense;
+  if (caloriesValueEl) caloriesValueEl.textContent = state.calories;
+  if (sportCountValueEl) sportCountValueEl.textContent = state.sportCount;
 }
 
 function renderOperations() {
+  if (!operationsListEl) return;
+
   const operations = getFilteredOperations();
 
   if (!operations.length) {
@@ -418,6 +444,7 @@ function renderOperations() {
 }
 
 function renderFood() {
+  if (!foodListEl) return;
   if (!state.food.length) {
     foodListEl.textContent = "Пока нет записей";
     return;
@@ -437,6 +464,7 @@ function renderFood() {
 }
 
 function renderSport() {
+  if (!sportListEl) return;
   if (!state.sport.length) {
     sportListEl.textContent = "Пока нет записей";
     return;
@@ -456,6 +484,8 @@ function renderSport() {
 }
 
 function renderPeriodAnalytics() {
+  if (!periodIncomeValueEl || !periodExpenseValueEl || !periodBalanceValueEl) return;
+
   const operations = state.operations.filter(item => isInSelectedPeriod(item.created_at));
   const periodIncome = operations.filter(i => i.record_type === "income").reduce((s, i) => s + Number(i.amount), 0);
   const periodExpense = operations.filter(i => i.record_type === "expense").reduce((s, i) => s + Number(i.amount), 0);
@@ -467,6 +497,8 @@ function renderPeriodAnalytics() {
 }
 
 function renderCategoryStats() {
+  if (!categoryStatsEl) return;
+
   const expenseOperations = state.operations.filter(
     item => item.record_type === "expense" && isInSelectedPeriod(item.created_at)
   );
@@ -519,9 +551,7 @@ function renderExpenseChart(grouped) {
         datasets: [{ data: [1], backgroundColor: ["#e5e7eb"] }]
       },
       options: {
-        plugins: {
-          legend: { position: "bottom" }
-        }
+        plugins: { legend: { position: "bottom" } }
       }
     });
     return;
@@ -538,14 +568,14 @@ function renderExpenseChart(grouped) {
     },
     options: {
       responsive: true,
-      plugins: {
-        legend: { position: "bottom" }
-      }
+      plugins: { legend: { position: "bottom" } }
     }
   });
 }
 
 function renderBudgetBlock() {
+  if (!monthlyBudgetValueEl) return;
+
   const monthKey = getMonthKey();
 
   const monthExpenses = state.operations.filter(item => {
@@ -564,21 +594,25 @@ function renderBudgetBlock() {
 
   let percent = 0;
   if (budget > 0) percent = Math.min((spent / budget) * 100, 100);
-  monthlyBudgetBarEl.style.width = `${percent}%`;
+  if (monthlyBudgetBarEl) monthlyBudgetBarEl.style.width = `${percent}%`;
 
-  budgetWarningEl.classList.add("hidden");
-  budgetWarningEl.textContent = "";
+  if (budgetWarningEl) {
+    budgetWarningEl.classList.add("hidden");
+    budgetWarningEl.textContent = "";
 
-  if (budget > 0 && spent >= budget) {
-    budgetWarningEl.textContent = "Бюджет месяца превышен";
-    budgetWarningEl.classList.remove("hidden");
-  } else if (budget > 0 && spent >= budget * 0.8) {
-    budgetWarningEl.textContent = "Внимание: использовано более 80% бюджета";
-    budgetWarningEl.classList.remove("hidden");
+    if (budget > 0 && spent >= budget) {
+      budgetWarningEl.textContent = "Бюджет месяца превышен";
+      budgetWarningEl.classList.remove("hidden");
+    } else if (budget > 0 && spent >= budget * 0.8) {
+      budgetWarningEl.textContent = "Внимание: использовано более 80% бюджета";
+      budgetWarningEl.classList.remove("hidden");
+    }
   }
 }
 
 function renderCategoryBudgets() {
+  if (!categoryBudgetListEl) return;
+
   const monthKey = getMonthKey();
 
   const monthExpenses = state.operations.filter(item => {
@@ -593,10 +627,7 @@ function renderCategoryBudgets() {
   }
 
   categoryBudgetListEl.innerHTML = state.categoryBudgets.map(item => {
-    const spent = monthExpenses
-      .filter(exp => exp.category === item.category)
-      .reduce((sum, exp) => sum + Number(exp.amount), 0);
-
+    const spent = monthExpenses.filter(exp => exp.category === item.category).reduce((sum, exp) => sum + Number(exp.amount), 0);
     const limit = Number(item.limit_amount);
     const left = limit - spent;
     const percent = limit > 0 ? Math.min((spent / limit) * 100, 100) : 0;
@@ -621,6 +652,8 @@ function renderCategoryBudgets() {
 }
 
 function renderRecurring() {
+  if (!recurringListEl) return;
+
   if (!state.recurring.length) {
     recurringListEl.textContent = "Пока нет регулярных платежей";
     return;
@@ -647,6 +680,8 @@ function renderRecurring() {
 }
 
 function renderGoals() {
+  if (!goalsListEl) return;
+
   if (!state.goals.length) {
     goalsListEl.textContent = "Пока нет целей";
     return;
@@ -658,7 +693,7 @@ function renderGoals() {
       : 0;
 
     return `
-      <div class="budget-row">
+      <div class="goal-row">
         <div class="category-label">
           <span>${item.title}</span>
           <strong>${item.current_amount} / ${item.target_amount}</strong>
@@ -672,19 +707,21 @@ function renderGoals() {
 }
 
 function renderPlanner() {
+  if (!plannerListEl) return;
+
   if (!state.planner.length) {
     plannerListEl.textContent = "Пока нет задач";
     return;
   }
 
   plannerListEl.innerHTML = state.planner.map(item => `
-    <div class="operation-item">
-      <div class="operation-top">
+    <div class="task-row">
+      <div class="task-top">
         <div>
           <div class="operation-type">${item.title}</div>
           <div class="operation-date">${item.period_type} | ${item.due_date || "без даты"}</div>
         </div>
-        <button class="${item.is_done ? "edit-btn" : "recurring-pay-btn"}" data-task-id="${item.id}">
+        <button class="${item.is_done ? "edit-btn" : "done-btn"}" data-task-id="${item.id}">
           ${item.is_done ? "Сделано" : "Выполнить"}
         </button>
       </div>
@@ -736,6 +773,8 @@ function getReminders() {
 }
 
 function renderReminders() {
+  if (!remindersListEl) return;
+
   const reminders = getReminders();
 
   if (!reminders.length) {
@@ -766,7 +805,9 @@ function renderAll() {
 function openFinanceModal(type) {
   financeTypeInput.value = type;
   editingFinanceIdInput.value = "";
-  financeModalTitle.textContent = type === "income" ? "Добавить доход" : "Добавить расход";
+  if (financeModalTitle) {
+    financeModalTitle.textContent = type === "income" ? "Добавить доход" : "Добавить расход";
+  }
   financeAmountInput.value = "";
   financeCommentInput.value = "";
   fillFinanceCategories(type);
@@ -776,7 +817,9 @@ function openFinanceModal(type) {
 function openEditFinanceModal(item) {
   financeTypeInput.value = item.record_type;
   editingFinanceIdInput.value = item.id;
-  financeModalTitle.textContent = item.record_type === "income" ? "Редактировать доход" : "Редактировать расход";
+  if (financeModalTitle) {
+    financeModalTitle.textContent = item.record_type === "income" ? "Редактировать доход" : "Редактировать расход";
+  }
   financeAmountInput.value = item.amount;
   financeCommentInput.value = item.comment || "";
   fillFinanceCategories(item.record_type, item.category);
@@ -1136,19 +1179,26 @@ async function saveSport() {
 }
 
 async function initApp() {
-  initTelegramUser();
-  fillCategoryFilter();
-  fillCategoryBudgetSelect();
-  fillRecurringCategorySelect();
-  await ensureProfile();
-  await loadFinance();
-  await loadFood();
-  await loadSport();
-  await loadBudgets();
-  await loadRecurring();
-  await loadGoals();
-  await loadPlanner();
-  renderAll();
+  try {
+    initTelegramUser();
+    fillCategoryFilter();
+    fillCategoryBudgetSelect();
+    fillRecurringCategorySelect();
+    await ensureProfile();
+
+    try { await loadFinance(); } catch (e) { console.error("loadFinance error", e); }
+    try { await loadFood(); } catch (e) { console.error("loadFood error", e); }
+    try { await loadSport(); } catch (e) { console.error("loadSport error", e); }
+    try { await loadBudgets(); } catch (e) { console.error("loadBudgets error", e); }
+    try { await loadRecurring(); } catch (e) { console.error("loadRecurring error", e); }
+    try { await loadGoals(); } catch (e) { console.error("loadGoals error", e); }
+    try { await loadPlanner(); } catch (e) { console.error("loadPlanner error", e); }
+
+    renderAll();
+  } catch (error) {
+    console.error("initApp fatal error", error);
+    if (userInfoEl) userInfoEl.textContent = "Ошибка загрузки приложения";
+  }
 }
 
 document.querySelectorAll(".tab").forEach(tab => {
@@ -1156,13 +1206,15 @@ document.querySelectorAll(".tab").forEach(tab => {
     document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
     document.querySelectorAll(".tab-content").forEach(c => c.classList.remove("active"));
     tab.classList.add("active");
-    document.getElementById(tab.dataset.tab).classList.add("active");
+    const section = document.getElementById(tab.dataset.tab);
+    if (section) section.classList.add("active");
   });
 });
 
 document.querySelectorAll(".close-btn").forEach(btn => {
   btn.addEventListener("click", () => {
-    closeModal(document.getElementById(btn.dataset.close));
+    const modal = document.getElementById(btn.dataset.close);
+    if (modal) closeModal(modal);
   });
 });
 
@@ -1185,56 +1237,63 @@ document.querySelectorAll(".period-btn").forEach(btn => {
   btn.addEventListener("click", () => {
     document.querySelectorAll(".period-btn").forEach(item => item.classList.remove("active"));
     btn.classList.add("active");
-
     state.periodFilter = btn.dataset.period;
 
-    if (state.periodFilter === "custom") {
-      customPeriodBoxEl.classList.remove("hidden");
-    } else {
-      customPeriodBoxEl.classList.add("hidden");
-      renderAll();
+    if (customPeriodBoxEl) {
+      if (state.periodFilter === "custom") {
+        customPeriodBoxEl.classList.remove("hidden");
+      } else {
+        customPeriodBoxEl.classList.add("hidden");
+        renderAll();
+      }
     }
   });
 });
 
-applyCustomPeriodBtn.addEventListener("click", () => {
-  state.customDateFrom = dateFromEl.value;
-  state.customDateTo = dateToEl.value;
-  renderAll();
-});
+if (applyCustomPeriodBtn) {
+  applyCustomPeriodBtn.addEventListener("click", () => {
+    state.customDateFrom = dateFromEl.value;
+    state.customDateTo = dateToEl.value;
+    renderAll();
+  });
+}
 
-searchInputEl.addEventListener("input", () => {
-  state.searchQuery = searchInputEl.value;
-  renderOperations();
-});
+if (searchInputEl) {
+  searchInputEl.addEventListener("input", () => {
+    state.searchQuery = searchInputEl.value;
+    renderOperations();
+  });
+}
 
-categoryFilterEl.addEventListener("change", () => {
-  state.categoryFilter = categoryFilterEl.value;
-  renderOperations();
-});
+if (categoryFilterEl) {
+  categoryFilterEl.addEventListener("change", () => {
+    state.categoryFilter = categoryFilterEl.value;
+    renderOperations();
+  });
+}
 
-openIncomeBtn.addEventListener("click", () => openFinanceModal("income"));
-openExpenseBtn.addEventListener("click", () => openFinanceModal("expense"));
-financeIncomeBtn.addEventListener("click", () => openFinanceModal("income"));
-financeExpenseBtn.addEventListener("click", () => openFinanceModal("expense"));
+if (openIncomeBtn) openIncomeBtn.addEventListener("click", () => openFinanceModal("income"));
+if (openExpenseBtn) openExpenseBtn.addEventListener("click", () => openFinanceModal("expense"));
+if (financeIncomeBtn) financeIncomeBtn.addEventListener("click", () => openFinanceModal("income"));
+if (financeExpenseBtn) financeExpenseBtn.addEventListener("click", () => openFinanceModal("expense"));
 
-openFoodBtn.addEventListener("click", () => openModal(foodModal));
-foodAddBtn.addEventListener("click", () => openModal(foodModal));
+if (openFoodBtn) openFoodBtn.addEventListener("click", () => openModal(foodModal));
+if (foodAddBtn) foodAddBtn.addEventListener("click", () => openModal(foodModal));
 
-openSportBtn.addEventListener("click", () => openModal(sportModal));
-sportAddBtn.addEventListener("click", () => openModal(sportModal));
+if (openSportBtn) openSportBtn.addEventListener("click", () => openModal(sportModal));
+if (sportAddBtn) sportAddBtn.addEventListener("click", () => openModal(sportModal));
 
-openRecurringBtn.addEventListener("click", () => openModal(recurringModal));
-openGoalBtn.addEventListener("click", () => openModal(goalModal));
-openPlannerBtn.addEventListener("click", () => openModal(plannerModal));
+if (openRecurringBtn) openRecurringBtn.addEventListener("click", () => openModal(recurringModal));
+if (openGoalBtn) openGoalBtn.addEventListener("click", () => openModal(goalModal));
+if (openPlannerBtn) openPlannerBtn.addEventListener("click", () => openModal(plannerModal));
 
-saveFinanceBtn.addEventListener("click", saveFinance);
-saveFoodBtn.addEventListener("click", saveFood);
-saveSportBtn.addEventListener("click", saveSport);
-saveMonthlyBudgetBtn.addEventListener("click", saveMonthlyBudget);
-saveCategoryBudgetBtn.addEventListener("click", saveCategoryBudget);
-saveRecurringBtn.addEventListener("click", saveRecurringPayment);
-saveGoalBtn.addEventListener("click", saveGoal);
-savePlannerBtn.addEventListener("click", savePlannerTask);
+if (saveFinanceBtn) saveFinanceBtn.addEventListener("click", saveFinance);
+if (saveFoodBtn) saveFoodBtn.addEventListener("click", saveFood);
+if (saveSportBtn) saveSportBtn.addEventListener("click", saveSport);
+if (saveMonthlyBudgetBtn) saveMonthlyBudgetBtn.addEventListener("click", saveMonthlyBudget);
+if (saveCategoryBudgetBtn) saveCategoryBudgetBtn.addEventListener("click", saveCategoryBudget);
+if (saveRecurringBtn) saveRecurringBtn.addEventListener("click", saveRecurringPayment);
+if (saveGoalBtn) saveGoalBtn.addEventListener("click", saveGoal);
+if (savePlannerBtn) savePlannerBtn.addEventListener("click", savePlannerTask);
 
 initApp();
