@@ -6,7 +6,7 @@ body {
 }
 
 .app {
-  max-width: 540px;
+  max-width: 560px;
   margin: 0 auto;
   padding: 16px;
 }
@@ -32,7 +32,7 @@ body {
 
 .tabs {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(6, 1fr);
   gap: 8px;
   margin-bottom: 16px;
 }
@@ -67,19 +67,8 @@ body {
   box-shadow: 0 4px 18px rgba(0,0,0,0.08);
 }
 
-.grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-}
-
-.period-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-  margin-top: 12px;
-}
-
+.grid,
+.period-grid,
 .summary-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -149,19 +138,23 @@ label {
   margin-bottom: 6px;
 }
 
-.operation-item {
+.operation-item,
+.recurring-item,
+.task-row {
   padding: 12px;
   border: 1px solid #e5e7eb;
   border-radius: 14px;
   margin-bottom: 10px;
 }
 
-.operation-top {
+.operation-top,
+.task-top,
+.category-label,
+.chart-row-label {
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 10px;
-  margin-bottom: 6px;
 }
 
 .operation-type {
@@ -187,7 +180,8 @@ label {
   margin-bottom: 8px;
 }
 
-.operation-actions {
+.operation-actions,
+.recurring-actions {
   display: flex;
   gap: 8px;
 }
@@ -204,28 +198,53 @@ label {
   font-size: 13px;
 }
 
-.category-row {
+.done-btn,
+.recurring-pay-btn {
+  background: #16a34a;
+  padding: 10px 12px;
+  font-size: 13px;
+}
+
+.category-row,
+.goal-row,
+.budget-row,
+.chart-row {
   margin-bottom: 12px;
 }
 
-.category-label {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 4px;
-  font-size: 14px;
-}
-
-.category-bar {
-  height: 10px;
+.bar-bg,
+.category-bar,
+.chart-bar-bg {
+  height: 12px;
   background: #e5e7eb;
   border-radius: 999px;
   overflow: hidden;
+  margin-top: 6px;
 }
 
-.category-bar-fill {
+.bar-fill,
+.category-bar-fill,
+.chart-bar-fill {
   height: 100%;
-  background: #2563eb;
   border-radius: 999px;
+}
+
+.bar-fill,
+.category-bar-fill {
+  background: #2563eb;
+}
+
+.chart-bar-fill.income {
+  background: #16a34a;
+}
+
+.chart-bar-fill.expense {
+  background: #dc2626;
+}
+
+.chart-section-title {
+  margin-bottom: 10px;
+  font-weight: bold;
 }
 
 .custom-period-box {
@@ -249,47 +268,12 @@ label {
   font-weight: bold;
 }
 
-.budget-row {
-  margin-bottom: 14px;
-}
-
-.budget-row strong.red {
-  color: #b91c1c;
-}
-
-.budget-row strong.yellow {
-  color: #b45309;
-}
-
-.budget-row strong.green {
-  color: #15803d;
-}
-
 .reminder-item {
   padding: 12px;
   border-radius: 12px;
   background: #fff7ed;
   border: 1px solid #fdba74;
   margin-bottom: 10px;
-}
-
-.recurring-item {
-  padding: 12px;
-  border: 1px solid #e5e7eb;
-  border-radius: 14px;
-  margin-bottom: 10px;
-}
-
-.recurring-actions {
-  display: flex;
-  gap: 8px;
-  margin-top: 8px;
-}
-
-.recurring-pay-btn {
-  background: #16a34a;
-  font-size: 13px;
-  padding: 10px 12px;
 }
 
 .modal {
@@ -309,7 +293,7 @@ label {
 .modal-content {
   background: white;
   width: 100%;
-  max-width: 540px;
+  max-width: 560px;
   border-radius: 18px 18px 10px 10px;
   padding: 16px;
   max-height: 85vh;
@@ -329,35 +313,4 @@ label {
   border-radius: 12px;
   background: #e5e7eb;
   color: #111827;
-}
-.reminder-item {
-  padding: 12px;
-  border-radius: 12px;
-  background: #fff7ed;
-  border: 1px solid #fdba74;
-  margin-bottom: 10px;
-}
-
-.goal-row {
-  margin-bottom: 14px;
-}
-
-.task-row {
-  padding: 12px;
-  border: 1px solid #e5e7eb;
-  border-radius: 14px;
-  margin-bottom: 10px;
-}
-
-.task-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 10px;
-}
-
-.done-btn {
-  background: #16a34a;
-  padding: 10px 12px;
-  font-size: 13px;
 }

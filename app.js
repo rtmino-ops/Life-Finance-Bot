@@ -49,8 +49,6 @@ const state = {
   categoryBudgets: []
 };
 
-let expenseChart = null;
-
 const userInfoEl = document.getElementById("userInfo");
 const balanceValueEl = document.getElementById("balanceValue");
 const incomeValueEl = document.getElementById("incomeValue");
@@ -62,7 +60,10 @@ const remindersListEl = document.getElementById("remindersList");
 const periodIncomeValueEl = document.getElementById("periodIncomeValue");
 const periodExpenseValueEl = document.getElementById("periodExpenseValue");
 const periodBalanceValueEl = document.getElementById("periodBalanceValue");
-const categoryStatsEl = document.getElementById("categoryStats");
+
+const summaryVisualChartEl = document.getElementById("summaryVisualChart");
+const incomeCategoryChartEl = document.getElementById("incomeCategoryChart");
+const expenseCategoryChartEl = document.getElementById("expenseCategoryChart");
 
 const monthlyBudgetInputEl = document.getElementById("monthlyBudgetInput");
 const saveMonthlyBudgetBtn = document.getElementById("saveMonthlyBudgetBtn");
@@ -163,15 +164,11 @@ function initTelegramUser() {
     const user = tg.initDataUnsafe.user;
     state.telegramId = user.id;
     state.username = user.first_name || "Пользователь";
-    if (userInfoEl) {
-      userInfoEl.textContent = `Telegram ID: ${state.telegramId} | ${state.username}`;
-    }
+    if (userInfoEl) userInfoEl.textContent = `Telegram ID: ${state.telegramId} | ${state.username}`;
   } else {
     state.telegramId = 999999;
     state.username = "Test User";
-    if (userInfoEl) {
-      userInfoEl.textContent = `Тестовый режим | Telegram ID: ${state.telegramId}`;
-    }
+    if (userInfoEl) userInfoEl.textContent = `Тестовый режим | Telegram ID: ${state.telegramId}`;
   }
 }
 
@@ -182,15 +179,12 @@ function getMonthKey() {
 
 function fillFinanceCategories(type, selectedValue = null) {
   if (!financeCategoryInput) return;
-
   const list = type === "income" ? incomeCategories : expenseCategories;
-  financeCategoryInput.innerHTML = list
-    .map(item => `
-      <option value="${item.value}" ${selectedValue === item.value ? "selected" : ""}>
-        ${item.label}
-      </option>
-    `)
-    .join("");
+  financeCategoryInput.innerHTML = list.map(item => `
+    <option value="${item.value}" ${selectedValue === item.value ? "selected" : ""}>
+      ${item.label}
+    </option>
+  `).join("");
 }
 
 function fillCategoryFilter() {
@@ -390,6 +384,20 @@ function getFilteredOperations() {
   return operations;
 }
 
+function getPeriodOperations() {
+  return state.operations.filter(item => isInSelectedPeriod(item.created_at));
+}
+
+function getGroupedByCategory(recordType) {
+  const grouped = {};
+  getPeriodOperations()
+    .filter(item => item.record_type === recordType)
+    .forEach(item => {
+      grouped[item.category] = (grouped[item.category] || 0) + Number(item.amount);
+    });
+  return grouped;
+}
+
 function renderSummary() {
   state.balance = state.income - state.expense;
   if (balanceValueEl) balanceValueEl.textContent = state.balance;
@@ -486,7 +494,7 @@ function renderSport() {
 function renderPeriodAnalytics() {
   if (!periodIncomeValueEl || !periodExpenseValueEl || !periodBalanceValueEl) return;
 
-  const operations = state.operations.filter(item => isInSelectedPeriod(item.created_at));
+  const operations = getPeriodOperations();
   const periodIncome = operations.filter(i => i.record_type === "income").reduce((s, i) => s + Number(i.amount), 0);
   const periodExpense = operations.filter(i => i.record_type === "expense").reduce((s, i) => s + Number(i.amount), 0);
   const periodBalance = periodIncome - periodExpense;
@@ -496,94 +504,73 @@ function renderPeriodAnalytics() {
   periodBalanceValueEl.textContent = periodBalance;
 }
 
-function renderCategoryStats() {
-  if (!categoryStatsEl) return;
+function renderVisualSummaryChart() {
+  if (!summaryVisualChartEl) return;
 
-  const expenseOperations = state.operations.filter(
-    item => item.record_type === "expense" && isInSelectedPeriod(item.created_at)
-  );
+  const operations = getPeriodOperations();
+  const income = operations.filter(i => i.record_type === "income").reduce((s, i) => s + Number(i.amount), 0);
+  const expense = operations.filter(i => i.record_type === "expense").reduce((s, i) => s + Number(i.amount), 0);
+  const total = income + expense;
 
-  if (!expenseOperations.length) {
-    categoryStatsEl.textContent = "Нет расходов за выбранный период";
-    renderExpenseChart({});
+  const incomePercent = total > 0 ? (income / total) * 100 : 0;
+  const expensePercent = total > 0 ? (expense / total) * 100 : 0;
+
+  summaryVisualChartEl.innerHTML = `
+    <div class="chart-row">
+      <div class="chart-row-label">
+        <span>Доходы</span>
+        <strong>${income}</strong>
+      </div>
+      <div class="chart-bar-bg">
+        <div class="chart-bar-fill income" style="width:${incomePercent}%"></div>
+      </div>
+    </div>
+    <div class="chart-row">
+      <div class="chart-row-label">
+        <span>Расходы</span>
+        <strong>${expense}</strong>
+      </div>
+      <div class="chart-bar-bg">
+        <div class="chart-bar-fill expense" style="width:${expensePercent}%"></div>
+      </div>
+    </div>
+  `;
+}
+
+function renderVisualCategoryChart(targetEl, grouped, type) {
+  if (!targetEl) return;
+
+  const entries = Object.entries(grouped);
+
+  if (!entries.length) {
+    targetEl.textContent = "Нет данных за выбранный период";
     return;
   }
 
-  const grouped = {};
-  expenseOperations.forEach(item => {
-    grouped[item.category] = (grouped[item.category] || 0) + Number(item.amount);
-  });
+  const maxValue = Math.max(...entries.map(([, amount]) => amount));
+  const fillClass = type === "income" ? "income" : "expense";
 
-  const maxValue = Math.max(...Object.values(grouped));
+  targetEl.innerHTML = entries.map(([category, amount]) => {
+    const percent = maxValue > 0 ? (amount / maxValue) * 100 : 0;
 
-  categoryStatsEl.innerHTML = Object.entries(grouped).map(([category, amount]) => {
-    const width = (amount / maxValue) * 100;
     return `
-      <div class="category-row">
-        <div class="category-label">
+      <div class="chart-row">
+        <div class="chart-row-label">
           <span>${categoryMap[category] || category}</span>
           <strong>${amount}</strong>
         </div>
-        <div class="category-bar">
-          <div class="category-bar-fill" style="width:${width}%"></div>
+        <div class="chart-bar-bg">
+          <div class="chart-bar-fill ${fillClass}" style="width:${percent}%"></div>
         </div>
       </div>
     `;
   }).join("");
-
-  renderExpenseChart(grouped);
 }
 
-function renderExpenseChart(grouped) {
-  function renderExpenseChartFromState() {
-  const expenseOperations = state.operations.filter(
-    item => item.record_type === "expense" && isInSelectedPeriod(item.created_at)
-  );
-
-  const grouped = {};
-
-  expenseOperations.forEach(item => {
-    grouped[item.category] = (grouped[item.category] || 0) + Number(item.amount);
-  });
-
-  renderExpenseChart(grouped);
-}
-  const ctx = document.getElementById("expenseChart");
-  if (!ctx) return;
-
-  if (expenseChart) expenseChart.destroy();
-
-  const labels = Object.keys(grouped).map(key => categoryMap[key] || key);
-  const values = Object.values(grouped);
-
-  if (!labels.length) {
-    expenseChart = new Chart(ctx, {
-      type: "doughnut",
-      data: {
-        labels: ["Нет данных"],
-        datasets: [{ data: [1], backgroundColor: ["#e5e7eb"] }]
-      },
-      options: {
-        plugins: { legend: { position: "bottom" } }
-      }
-    });
-    return;
-  }
-
-  expenseChart = new Chart(ctx, {
-    type: "doughnut",
-    data: {
-      labels,
-      datasets: [{
-        data: values,
-        backgroundColor: ["#2563eb", "#16a34a", "#dc2626", "#ea580c", "#7c3aed", "#0891b2", "#db2777", "#65a30d"]
-      }]
-    },
-    options: {
-      responsive: true,
-      plugins: { legend: { position: "bottom" } }
-    }
-  });
+function renderFinanceCharts() {
+  renderVisualSummaryChart();
+  renderVisualCategoryChart(incomeCategoryChartEl, getGroupedByCategory("income"), "income");
+  renderVisualCategoryChart(expenseCategoryChartEl, getGroupedByCategory("expense"), "expense");
 }
 
 function renderBudgetBlock() {
@@ -795,9 +782,7 @@ function renderReminders() {
     return;
   }
 
-  remindersListEl.innerHTML = reminders
-    .map(item => `<div class="reminder-item">${item}</div>`)
-    .join("");
+  remindersListEl.innerHTML = reminders.map(item => `<div class="reminder-item">${item}</div>`).join("");
 }
 
 function renderAll() {
@@ -806,16 +791,13 @@ function renderAll() {
   renderFood();
   renderSport();
   renderPeriodAnalytics();
-  renderCategoryStats();
+  renderFinanceCharts();
   renderBudgetBlock();
   renderCategoryBudgets();
   renderRecurring();
   renderGoals();
   renderPlanner();
   renderReminders();
-  setTimeout(() => {
-  renderExpenseChartFromState();
-}, 100);
 }
 
 function openFinanceModal(type) {
@@ -1202,13 +1184,13 @@ async function initApp() {
     fillRecurringCategorySelect();
     await ensureProfile();
 
-    try { await loadFinance(); } catch (e) { console.error("loadFinance error", e); }
-    try { await loadFood(); } catch (e) { console.error("loadFood error", e); }
-    try { await loadSport(); } catch (e) { console.error("loadSport error", e); }
-    try { await loadBudgets(); } catch (e) { console.error("loadBudgets error", e); }
-    try { await loadRecurring(); } catch (e) { console.error("loadRecurring error", e); }
-    try { await loadGoals(); } catch (e) { console.error("loadGoals error", e); }
-    try { await loadPlanner(); } catch (e) { console.error("loadPlanner error", e); }
+    await loadFinance();
+    await loadFood();
+    await loadSport();
+    await loadBudgets();
+    await loadRecurring();
+    await loadGoals();
+    await loadPlanner();
 
     renderAll();
   } catch (error) {
@@ -1226,10 +1208,10 @@ document.querySelectorAll(".tab").forEach(tab => {
     const section = document.getElementById(tab.dataset.tab);
     if (section) section.classList.add("active");
 
-    if (tab.dataset.tab === "finance" || tab.dataset.tab === "home") {
+    if (tab.dataset.tab === "finance") {
       setTimeout(() => {
-        renderExpenseChartFromState();
-      }, 150);
+        renderFinanceCharts();
+      }, 100);
     }
   });
 });
@@ -1253,6 +1235,7 @@ document.querySelectorAll(".filter-btn").forEach(btn => {
     btn.classList.add("active");
     state.financeFilter = btn.dataset.filter;
     renderOperations();
+    renderFinanceCharts();
   });
 });
 

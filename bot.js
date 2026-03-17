@@ -1,4 +1,3 @@
-console.log("Life Finance bot started...");
 const TelegramBot = require("node-telegram-bot-api");
 const { createClient } = require("@supabase/supabase-js");
 
@@ -136,46 +135,6 @@ async function buildReminderText(userId) {
   return `Напоминания Life Finance:\n\n${messages.join("\n")}`;
 }
 
-async function sendDailyReminders() {
-  try {
-    const { data: users, error } = await supabase
-      .from("notification_settings")
-      .select("telegram_id, reminders_enabled");
-
-    if (error) {
-      console.error("settings load error:", error.message);
-      return;
-    }
-
-    for (const user of users || []) {
-      if (!user.reminders_enabled) continue;
-
-      try {
-        const text = await buildReminderText(user.telegram_id);
-        if (!text) continue;
-
-        await bot.sendMessage(user.telegram_id, text);
-        console.log(`Reminder sent to ${user.telegram_id}`);
-      } catch (err) {
-        if (err.response && err.response.body && err.response.body.error_code === 403) {
-          console.log(`User ${user.telegram_id} blocked the bot`);
-        } else {
-          console.error(`Reminder error for ${user.telegram_id}:`, err.message);
-        }
-      }
-    }
-  } catch (error) {
-    console.error("sendDailyReminders error:", error.message);
-  }
-}
-
-// ТЕСТОВЫЙ ИНТЕРВАЛ ДЛЯ ПРОВЕРКИ
-// сейчас раз в 5 минут
-setInterval(() => {
-  sendDailyReminders();
-}, 5 * 60 * 1000);
-
-console.log("Life Finance bot started...");
 bot.onText(/\/reminders/, async (msg) => {
   try {
     const text = await buildReminderText(msg.from.id);
@@ -191,3 +150,5 @@ bot.onText(/\/reminders/, async (msg) => {
     await bot.sendMessage(msg.chat.id, "Не удалось получить напоминания.");
   }
 });
+
+console.log("Life Finance bot started...");
