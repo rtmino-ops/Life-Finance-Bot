@@ -37,6 +37,8 @@ const state = {
   food: [],
   sport: [],
   recurring: [],
+  goals: [],
+  planner: [],
   financeFilter: "all",
   periodFilter: "today",
   customDateFrom: null,
@@ -78,6 +80,12 @@ const categoryBudgetListEl = document.getElementById("categoryBudgetList");
 const openRecurringBtn = document.getElementById("openRecurringBtn");
 const recurringListEl = document.getElementById("recurringList");
 
+const openGoalBtn = document.getElementById("openGoalBtn");
+const goalsListEl = document.getElementById("goalsList");
+
+const openPlannerBtn = document.getElementById("openPlannerBtn");
+const plannerListEl = document.getElementById("plannerList");
+
 const recurringModal = document.getElementById("recurringModal");
 const recurringTitleEl = document.getElementById("recurringTitle");
 const recurringAmountEl = document.getElementById("recurringAmount");
@@ -85,6 +93,17 @@ const recurringCategoryEl = document.getElementById("recurringCategory");
 const recurringDayEl = document.getElementById("recurringDay");
 const recurringCommentEl = document.getElementById("recurringComment");
 const saveRecurringBtn = document.getElementById("saveRecurringBtn");
+
+const goalModal = document.getElementById("goalModal");
+const goalTitleEl = document.getElementById("goalTitle");
+const goalTargetAmountEl = document.getElementById("goalTargetAmount");
+const saveGoalBtn = document.getElementById("saveGoalBtn");
+
+const plannerModal = document.getElementById("plannerModal");
+const plannerTitleEl = document.getElementById("plannerTitle");
+const plannerPeriodEl = document.getElementById("plannerPeriod");
+const plannerDateEl = document.getElementById("plannerDate");
+const savePlannerBtn = document.getElementById("savePlannerBtn");
 
 const operationsListEl = document.getElementById("operationsList");
 const foodListEl = document.getElementById("foodList");
@@ -207,33 +226,18 @@ async function ensureProfile() {
 }
 
 async function loadFinance() {
-  if (!supabaseClient || !state.telegramId) return;
-
-  const { data, error } = await supabaseClient
+  const { data } = await supabaseClient
     .from("finance_records")
     .select("*")
     .eq("telegram_id", state.telegramId)
     .order("created_at", { ascending: false });
 
-  if (error) {
-    console.error(error);
-    return;
-  }
-
   state.operations = data || [];
-
-  state.income = state.operations
-    .filter(item => item.record_type === "income")
-    .reduce((sum, item) => sum + Number(item.amount), 0);
-
-  state.expense = state.operations
-    .filter(item => item.record_type === "expense")
-    .reduce((sum, item) => sum + Number(item.amount), 0);
+  state.income = state.operations.filter(i => i.record_type === "income").reduce((s, i) => s + Number(i.amount), 0);
+  state.expense = state.operations.filter(i => i.record_type === "expense").reduce((s, i) => s + Number(i.amount), 0);
 }
 
 async function loadFood() {
-  if (!supabaseClient || !state.telegramId) return;
-
   const { data } = await supabaseClient
     .from("food_records")
     .select("*")
@@ -241,12 +245,10 @@ async function loadFood() {
     .order("created_at", { ascending: false });
 
   state.food = data || [];
-  state.calories = state.food.reduce((sum, item) => sum + Number(item.calories || 0), 0);
+  state.calories = state.food.reduce((s, i) => s + Number(i.calories || 0), 0);
 }
 
 async function loadSport() {
-  if (!supabaseClient || !state.telegramId) return;
-
   const { data } = await supabaseClient
     .from("sport_records")
     .select("*")
@@ -258,8 +260,6 @@ async function loadSport() {
 }
 
 async function loadBudgets() {
-  if (!supabaseClient || !state.telegramId) return;
-
   const monthKey = getMonthKey();
 
   const { data: budgetData } = await supabaseClient
@@ -281,8 +281,6 @@ async function loadBudgets() {
 }
 
 async function loadRecurring() {
-  if (!supabaseClient || !state.telegramId) return;
-
   const { data } = await supabaseClient
     .from("recurring_payments")
     .select("*")
@@ -293,48 +291,51 @@ async function loadRecurring() {
   state.recurring = data || [];
 }
 
-function renderSummary() {
-  state.balance = state.income - state.expense;
+async function loadGoals() {
+  const { data } = await supabaseClient
+    .from("saving_goals")
+    .select("*")
+    .eq("telegram_id", state.telegramId)
+    .order("created_at", { ascending: false });
 
-  balanceValueEl.textContent = state.balance;
-  incomeValueEl.textContent = state.income;
-  expenseValueEl.textContent = state.expense;
-  caloriesValueEl.textContent = state.calories;
-  sportCountValueEl.textContent = state.sportCount;
+  state.goals = data || [];
+}
+
+async function loadPlanner() {
+  const { data } = await supabaseClient
+    .from("planner_tasks")
+    .select("*")
+    .eq("telegram_id", state.telegramId)
+    .order("created_at", { ascending: false });
+
+  state.planner = data || [];
 }
 
 function formatDate(dateString) {
-  const date = new Date(dateString);
-  return date.toLocaleString("ru-RU");
+  return new Date(dateString).toLocaleString("ru-RU");
 }
 
 function isInSelectedPeriod(dateString) {
   const date = new Date(dateString);
   const now = new Date();
 
-  if (state.periodFilter === "today") {
-    return date.toDateString() === now.toDateString();
-  }
-
+  if (state.periodFilter === "today") return date.toDateString() === now.toDateString();
   if (state.periodFilter === "7") {
     const from = new Date();
     from.setDate(now.getDate() - 7);
     return date >= from;
   }
-
   if (state.periodFilter === "30") {
     const from = new Date();
     from.setDate(now.getDate() - 30);
     return date >= from;
   }
-
   if (state.periodFilter === "custom") {
     if (!state.customDateFrom || !state.customDateTo) return true;
     const from = new Date(state.customDateFrom + "T00:00:00");
     const to = new Date(state.customDateTo + "T23:59:59");
     return date >= from && date <= to;
   }
-
   return true;
 }
 
@@ -358,16 +359,20 @@ function getFilteredOperations() {
       const comment = (item.comment || "").toLowerCase();
       const categoryLabel = (categoryMap[item.category] || item.category || "").toLowerCase();
       const typeLabel = item.record_type === "income" ? "доход" : "расход";
-
-      return (
-        comment.includes(query) ||
-        categoryLabel.includes(query) ||
-        typeLabel.includes(query)
-      );
+      return comment.includes(query) || categoryLabel.includes(query) || typeLabel.includes(query);
     });
   }
 
   return operations;
+}
+
+function renderSummary() {
+  state.balance = state.income - state.expense;
+  balanceValueEl.textContent = state.balance;
+  incomeValueEl.textContent = state.income;
+  expenseValueEl.textContent = state.expense;
+  caloriesValueEl.textContent = state.calories;
+  sportCountValueEl.textContent = state.sportCount;
 }
 
 function renderOperations() {
@@ -378,39 +383,35 @@ function renderOperations() {
     return;
   }
 
-  operationsListEl.innerHTML = operations
-    .map(item => `
-      <div class="operation-item">
-        <div class="operation-top">
-          <div>
-            <div class="operation-type ${item.record_type}">
-              ${item.record_type === "income" ? "Доход" : "Расход"} — ${item.amount}
-            </div>
-            <div class="operation-date">${formatDate(item.created_at)}</div>
+  operationsListEl.innerHTML = operations.map(item => `
+    <div class="operation-item">
+      <div class="operation-top">
+        <div>
+          <div class="operation-type ${item.record_type}">
+            ${item.record_type === "income" ? "Доход" : "Расход"} — ${item.amount}
           </div>
-          <div class="operation-actions">
-            <button class="edit-btn" data-edit-id="${item.id}">Редактировать</button>
-            <button class="delete-btn" data-id="${item.id}" data-kind="finance">Удалить</button>
-          </div>
+          <div class="operation-date">${formatDate(item.created_at)}</div>
         </div>
-        <div class="operation-meta">
-          ${categoryMap[item.category] || item.category}${item.comment ? " | " + item.comment : ""}
+        <div class="operation-actions">
+          <button class="edit-btn" data-edit-id="${item.id}">Редактировать</button>
+          <button class="delete-btn" data-id="${item.id}" data-kind="finance">Удалить</button>
         </div>
       </div>
-    `)
-    .join("");
+      <div class="operation-meta">
+        ${categoryMap[item.category] || item.category}${item.comment ? " | " + item.comment : ""}
+      </div>
+    </div>
+  `).join("");
 
   document.querySelectorAll('[data-kind="finance"]').forEach(btn => {
     btn.addEventListener("click", async () => {
-      const id = btn.dataset.id;
-      await deleteFinanceRecord(id);
+      await deleteFinanceRecord(btn.dataset.id);
     });
   });
 
   document.querySelectorAll("[data-edit-id]").forEach(btn => {
     btn.addEventListener("click", () => {
-      const id = Number(btn.dataset.editId);
-      const item = state.operations.find(op => op.id === id);
+      const item = state.operations.find(op => op.id === Number(btn.dataset.editId));
       if (item) openEditFinanceModal(item);
     });
   });
@@ -422,19 +423,17 @@ function renderFood() {
     return;
   }
 
-  foodListEl.innerHTML = state.food
-    .map(item => `
-      <div class="operation-item">
-        <div class="operation-top">
-          <div>
-            <div class="operation-type">${item.meal_type} — ${item.title}</div>
-            <div class="operation-date">${formatDate(item.created_at)}</div>
-          </div>
+  foodListEl.innerHTML = state.food.map(item => `
+    <div class="operation-item">
+      <div class="operation-top">
+        <div>
+          <div class="operation-type">${item.meal_type} — ${item.title}</div>
+          <div class="operation-date">${formatDate(item.created_at)}</div>
         </div>
-        <div class="operation-meta">${item.calories} ккал</div>
       </div>
-    `)
-    .join("");
+      <div class="operation-meta">${item.calories} ккал</div>
+    </div>
+  `).join("");
 }
 
 function renderSport() {
@@ -443,32 +442,23 @@ function renderSport() {
     return;
   }
 
-  sportListEl.innerHTML = state.sport
-    .map(item => `
-      <div class="operation-item">
-        <div class="operation-top">
-          <div>
-            <div class="operation-type">${item.activity_type}</div>
-            <div class="operation-date">${formatDate(item.created_at)}</div>
-          </div>
+  sportListEl.innerHTML = state.sport.map(item => `
+    <div class="operation-item">
+      <div class="operation-top">
+        <div>
+          <div class="operation-type">${item.activity_type}</div>
+          <div class="operation-date">${formatDate(item.created_at)}</div>
         </div>
-        <div class="operation-meta">${item.activity_value}</div>
       </div>
-    `)
-    .join("");
+      <div class="operation-meta">${item.activity_value}</div>
+    </div>
+  `).join("");
 }
 
 function renderPeriodAnalytics() {
   const operations = state.operations.filter(item => isInSelectedPeriod(item.created_at));
-
-  const periodIncome = operations
-    .filter(item => item.record_type === "income")
-    .reduce((sum, item) => sum + Number(item.amount), 0);
-
-  const periodExpense = operations
-    .filter(item => item.record_type === "expense")
-    .reduce((sum, item) => sum + Number(item.amount), 0);
-
+  const periodIncome = operations.filter(i => i.record_type === "income").reduce((s, i) => s + Number(i.amount), 0);
+  const periodExpense = operations.filter(i => i.record_type === "expense").reduce((s, i) => s + Number(i.amount), 0);
   const periodBalance = periodIncome - periodExpense;
 
   periodIncomeValueEl.textContent = periodIncome;
@@ -488,29 +478,26 @@ function renderCategoryStats() {
   }
 
   const grouped = {};
-
   expenseOperations.forEach(item => {
     grouped[item.category] = (grouped[item.category] || 0) + Number(item.amount);
   });
 
   const maxValue = Math.max(...Object.values(grouped));
 
-  categoryStatsEl.innerHTML = Object.entries(grouped)
-    .map(([category, amount]) => {
-      const width = (amount / maxValue) * 100;
-      return `
-        <div class="category-row">
-          <div class="category-label">
-            <span>${categoryMap[category] || category}</span>
-            <strong>${amount}</strong>
-          </div>
-          <div class="category-bar">
-            <div class="category-bar-fill" style="width:${width}%"></div>
-          </div>
+  categoryStatsEl.innerHTML = Object.entries(grouped).map(([category, amount]) => {
+    const width = (amount / maxValue) * 100;
+    return `
+      <div class="category-row">
+        <div class="category-label">
+          <span>${categoryMap[category] || category}</span>
+          <strong>${amount}</strong>
         </div>
-      `;
-    })
-    .join("");
+        <div class="category-bar">
+          <div class="category-bar-fill" style="width:${width}%"></div>
+        </div>
+      </div>
+    `;
+  }).join("");
 
   renderExpenseChart(grouped);
 }
@@ -519,9 +506,7 @@ function renderExpenseChart(grouped) {
   const ctx = document.getElementById("expenseChart");
   if (!ctx) return;
 
-  if (expenseChart) {
-    expenseChart.destroy();
-  }
+  if (expenseChart) expenseChart.destroy();
 
   const labels = Object.keys(grouped).map(key => categoryMap[key] || key);
   const values = Object.values(grouped);
@@ -546,21 +531,10 @@ function renderExpenseChart(grouped) {
     type: "doughnut",
     data: {
       labels,
-      datasets: [
-        {
-          data: values,
-          backgroundColor: [
-            "#2563eb",
-            "#16a34a",
-            "#dc2626",
-            "#ea580c",
-            "#7c3aed",
-            "#0891b2",
-            "#db2777",
-            "#65a30d"
-          ]
-        }
-      ]
+      datasets: [{
+        data: values,
+        backgroundColor: ["#2563eb", "#16a34a", "#dc2626", "#ea580c", "#7c3aed", "#0891b2", "#db2777", "#65a30d"]
+      }]
     },
     options: {
       responsive: true,
@@ -618,34 +592,110 @@ function renderCategoryBudgets() {
     return;
   }
 
-  categoryBudgetListEl.innerHTML = state.categoryBudgets
-    .map(item => {
-      const spent = monthExpenses
-        .filter(exp => exp.category === item.category)
-        .reduce((sum, exp) => sum + Number(exp.amount), 0);
+  categoryBudgetListEl.innerHTML = state.categoryBudgets.map(item => {
+    const spent = monthExpenses
+      .filter(exp => exp.category === item.category)
+      .reduce((sum, exp) => sum + Number(exp.amount), 0);
 
-      const limit = Number(item.limit_amount);
-      const left = limit - spent;
-      const percent = limit > 0 ? Math.min((spent / limit) * 100, 100) : 0;
+    const limit = Number(item.limit_amount);
+    const left = limit - spent;
+    const percent = limit > 0 ? Math.min((spent / limit) * 100, 100) : 0;
 
-      let colorClass = "green";
-      if (spent >= limit) colorClass = "red";
-      else if (spent >= limit * 0.8) colorClass = "yellow";
+    let colorClass = "green";
+    if (spent >= limit) colorClass = "red";
+    else if (spent >= limit * 0.8) colorClass = "yellow";
 
-      return `
-        <div class="budget-row">
-          <div class="category-label">
-            <span>${categoryMap[item.category] || item.category}</span>
-            <strong class="${colorClass}">${spent} / ${limit}</strong>
-          </div>
-          <div class="category-bar">
-            <div class="category-bar-fill" style="width:${percent}%"></div>
-          </div>
-          <small>Осталось: ${left}</small>
+    return `
+      <div class="budget-row">
+        <div class="category-label">
+          <span>${categoryMap[item.category] || item.category}</span>
+          <strong class="${colorClass}">${spent} / ${limit}</strong>
         </div>
-      `;
-    })
-    .join("");
+        <div class="category-bar">
+          <div class="category-bar-fill" style="width:${percent}%"></div>
+        </div>
+        <small>Осталось: ${left}</small>
+      </div>
+    `;
+  }).join("");
+}
+
+function renderRecurring() {
+  if (!state.recurring.length) {
+    recurringListEl.textContent = "Пока нет регулярных платежей";
+    return;
+  }
+
+  recurringListEl.innerHTML = state.recurring.map(item => `
+    <div class="recurring-item">
+      <strong>${item.title}</strong> — ${item.amount}
+      <br />
+      <small>${categoryMap[item.category] || item.category} | ${item.day_of_month} числа</small>
+      ${item.comment ? `<br /><small>${item.comment}</small>` : ""}
+      <div class="recurring-actions">
+        <button class="recurring-pay-btn" data-pay-id="${item.id}">Учесть платеж</button>
+      </div>
+    </div>
+  `).join("");
+
+  document.querySelectorAll("[data-pay-id]").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const item = state.recurring.find(x => x.id === Number(btn.dataset.payId));
+      if (item) await applyRecurringPayment(item);
+    });
+  });
+}
+
+function renderGoals() {
+  if (!state.goals.length) {
+    goalsListEl.textContent = "Пока нет целей";
+    return;
+  }
+
+  goalsListEl.innerHTML = state.goals.map(item => {
+    const percent = item.target_amount > 0
+      ? Math.min((Number(item.current_amount) / Number(item.target_amount)) * 100, 100)
+      : 0;
+
+    return `
+      <div class="budget-row">
+        <div class="category-label">
+          <span>${item.title}</span>
+          <strong>${item.current_amount} / ${item.target_amount}</strong>
+        </div>
+        <div class="category-bar">
+          <div class="category-bar-fill" style="width:${percent}%"></div>
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+function renderPlanner() {
+  if (!state.planner.length) {
+    plannerListEl.textContent = "Пока нет задач";
+    return;
+  }
+
+  plannerListEl.innerHTML = state.planner.map(item => `
+    <div class="operation-item">
+      <div class="operation-top">
+        <div>
+          <div class="operation-type">${item.title}</div>
+          <div class="operation-date">${item.period_type} | ${item.due_date || "без даты"}</div>
+        </div>
+        <button class="${item.is_done ? "edit-btn" : "recurring-pay-btn"}" data-task-id="${item.id}">
+          ${item.is_done ? "Сделано" : "Выполнить"}
+        </button>
+      </div>
+    </div>
+  `).join("");
+
+  document.querySelectorAll("[data-task-id]").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      await togglePlannerTask(btn.dataset.taskId);
+    });
+  });
 }
 
 function getReminders() {
@@ -676,6 +726,12 @@ function getReminders() {
     }
   }
 
+  state.planner.forEach(task => {
+    if (!task.is_done) {
+      reminders.push(`Задача: ${task.title}`);
+    }
+  });
+
   return reminders;
 }
 
@@ -692,35 +748,6 @@ function renderReminders() {
     .join("");
 }
 
-function renderRecurring() {
-  if (!state.recurring.length) {
-    recurringListEl.textContent = "Пока нет регулярных платежей";
-    return;
-  }
-
-  recurringListEl.innerHTML = state.recurring
-    .map(item => `
-      <div class="recurring-item">
-        <strong>${item.title}</strong> — ${item.amount}
-        <br />
-        <small>${categoryMap[item.category] || item.category} | ${item.day_of_month} числа</small>
-        ${item.comment ? `<br /><small>${item.comment}</small>` : ""}
-        <div class="recurring-actions">
-          <button class="recurring-pay-btn" data-pay-id="${item.id}">Учесть платеж</button>
-        </div>
-      </div>
-    `)
-    .join("");
-
-  document.querySelectorAll("[data-pay-id]").forEach(btn => {
-    btn.addEventListener("click", async () => {
-      const id = Number(btn.dataset.payId);
-      const item = state.recurring.find(x => x.id === id);
-      if (item) await applyRecurringPayment(item);
-    });
-  });
-}
-
 function renderAll() {
   renderSummary();
   renderOperations();
@@ -731,6 +758,8 @@ function renderAll() {
   renderBudgetBlock();
   renderCategoryBudgets();
   renderRecurring();
+  renderGoals();
+  renderPlanner();
   renderReminders();
 }
 
@@ -844,11 +873,7 @@ async function saveMonthlyBudget() {
   } else {
     const result = await supabaseClient
       .from("budgets")
-      .insert({
-        telegram_id: state.telegramId,
-        month_key,
-        total_budget
-      });
+      .insert({ telegram_id: state.telegramId, month_key, total_budget });
 
     error = result.error;
   }
@@ -894,12 +919,7 @@ async function saveCategoryBudget() {
   } else {
     const result = await supabaseClient
       .from("category_budgets")
-      .insert({
-        telegram_id: state.telegramId,
-        month_key,
-        category,
-        limit_amount
-      });
+      .insert({ telegram_id: state.telegramId, month_key, category, limit_amount });
 
     error = result.error;
   }
@@ -976,6 +996,92 @@ async function applyRecurringPayment(item) {
   renderAll();
 }
 
+async function saveGoal() {
+  const title = goalTitleEl.value.trim();
+  const target_amount = Number(goalTargetAmountEl.value);
+
+  if (!title || !target_amount || target_amount <= 0) {
+    alert("Заполни цель корректно");
+    return;
+  }
+
+  const { error } = await supabaseClient
+    .from("saving_goals")
+    .insert({
+      telegram_id: state.telegramId,
+      title,
+      target_amount,
+      current_amount: 0
+    });
+
+  if (error) {
+    console.error(error);
+    alert("Ошибка сохранения цели");
+    return;
+  }
+
+  goalTitleEl.value = "";
+  goalTargetAmountEl.value = "";
+
+  closeModal(goalModal);
+  await loadGoals();
+  renderAll();
+}
+
+async function savePlannerTask() {
+  const title = plannerTitleEl.value.trim();
+  const period_type = plannerPeriodEl.value;
+  const due_date = plannerDateEl.value || null;
+
+  if (!title) {
+    alert("Введите название задачи");
+    return;
+  }
+
+  const { error } = await supabaseClient
+    .from("planner_tasks")
+    .insert({
+      telegram_id: state.telegramId,
+      title,
+      period_type,
+      due_date,
+      is_done: false
+    });
+
+  if (error) {
+    console.error(error);
+    alert("Ошибка сохранения задачи");
+    return;
+  }
+
+  plannerTitleEl.value = "";
+  plannerDateEl.value = "";
+
+  closeModal(plannerModal);
+  await loadPlanner();
+  renderAll();
+}
+
+async function togglePlannerTask(id) {
+  const item = state.planner.find(t => t.id === Number(id));
+  if (!item) return;
+
+  const { error } = await supabaseClient
+    .from("planner_tasks")
+    .update({ is_done: !item.is_done })
+    .eq("id", id)
+    .eq("telegram_id", state.telegramId);
+
+  if (error) {
+    console.error(error);
+    alert("Ошибка обновления задачи");
+    return;
+  }
+
+  await loadPlanner();
+  renderAll();
+}
+
 async function saveFood() {
   const meal_type = foodTypeInput.value;
   const title = foodNameInput.value.trim();
@@ -986,12 +1092,9 @@ async function saveFood() {
     return;
   }
 
-  const { error } = await supabaseClient.from("food_records").insert({
-    telegram_id: state.telegramId,
-    meal_type,
-    title,
-    calories
-  });
+  const { error } = await supabaseClient
+    .from("food_records")
+    .insert({ telegram_id: state.telegramId, meal_type, title, calories });
 
   if (error) {
     console.error(error);
@@ -1015,11 +1118,9 @@ async function saveSport() {
     return;
   }
 
-  const { error } = await supabaseClient.from("sport_records").insert({
-    telegram_id: state.telegramId,
-    activity_type,
-    activity_value
-  });
+  const { error } = await supabaseClient
+    .from("sport_records")
+    .insert({ telegram_id: state.telegramId, activity_type, activity_value });
 
   if (error) {
     console.error(error);
@@ -1045,6 +1146,8 @@ async function initApp() {
   await loadSport();
   await loadBudgets();
   await loadRecurring();
+  await loadGoals();
+  await loadPlanner();
   renderAll();
 }
 
@@ -1052,7 +1155,6 @@ document.querySelectorAll(".tab").forEach(tab => {
   tab.addEventListener("click", () => {
     document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
     document.querySelectorAll(".tab-content").forEach(c => c.classList.remove("active"));
-
     tab.classList.add("active");
     document.getElementById(tab.dataset.tab).classList.add("active");
   });
@@ -1060,8 +1162,7 @@ document.querySelectorAll(".tab").forEach(tab => {
 
 document.querySelectorAll(".close-btn").forEach(btn => {
   btn.addEventListener("click", () => {
-    const modalId = btn.dataset.close;
-    closeModal(document.getElementById(modalId));
+    closeModal(document.getElementById(btn.dataset.close));
   });
 });
 
@@ -1124,6 +1225,8 @@ openSportBtn.addEventListener("click", () => openModal(sportModal));
 sportAddBtn.addEventListener("click", () => openModal(sportModal));
 
 openRecurringBtn.addEventListener("click", () => openModal(recurringModal));
+openGoalBtn.addEventListener("click", () => openModal(goalModal));
+openPlannerBtn.addEventListener("click", () => openModal(plannerModal));
 
 saveFinanceBtn.addEventListener("click", saveFinance);
 saveFoodBtn.addEventListener("click", saveFood);
@@ -1131,5 +1234,7 @@ saveSportBtn.addEventListener("click", saveSport);
 saveMonthlyBudgetBtn.addEventListener("click", saveMonthlyBudget);
 saveCategoryBudgetBtn.addEventListener("click", saveCategoryBudget);
 saveRecurringBtn.addEventListener("click", saveRecurringPayment);
+saveGoalBtn.addEventListener("click", saveGoal);
+savePlannerBtn.addEventListener("click", savePlannerTask);
 
 initApp();
