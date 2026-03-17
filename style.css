@@ -330,3 +330,34 @@ label {
   background: #e5e7eb;
   color: #111827;
 }
+.reminder-item {
+  padding: 12px;
+  border-radius: 12px;
+  background: #fff7ed;
+  border: 1px solid #fdba74;
+  margin-bottom: 10px;
+}
+
+.goal-row {
+  margin-bottom: 14px;
+}
+
+.task-row {
+  padding: 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  margin-bottom: 10px;
+}
+
+.task-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.done-btn {
+  background: #16a34a;
+  padding: 10px 12px;
+  font-size: 13px;
+}

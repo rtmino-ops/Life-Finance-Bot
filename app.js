@@ -535,6 +535,19 @@ function renderCategoryStats() {
 }
 
 function renderExpenseChart(grouped) {
+  function renderExpenseChartFromState() {
+  const expenseOperations = state.operations.filter(
+    item => item.record_type === "expense" && isInSelectedPeriod(item.created_at)
+  );
+
+  const grouped = {};
+
+  expenseOperations.forEach(item => {
+    grouped[item.category] = (grouped[item.category] || 0) + Number(item.amount);
+  });
+
+  renderExpenseChart(grouped);
+}
   const ctx = document.getElementById("expenseChart");
   if (!ctx) return;
 
@@ -800,6 +813,9 @@ function renderAll() {
   renderGoals();
   renderPlanner();
   renderReminders();
+  setTimeout(() => {
+  renderExpenseChartFromState();
+}, 100);
 }
 
 function openFinanceModal(type) {
@@ -1206,8 +1222,15 @@ document.querySelectorAll(".tab").forEach(tab => {
     document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
     document.querySelectorAll(".tab-content").forEach(c => c.classList.remove("active"));
     tab.classList.add("active");
+
     const section = document.getElementById(tab.dataset.tab);
     if (section) section.classList.add("active");
+
+    if (tab.dataset.tab === "finance" || tab.dataset.tab === "home") {
+      setTimeout(() => {
+        renderExpenseChartFromState();
+      }, 150);
+    }
   });
 });
 
