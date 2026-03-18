@@ -1,13 +1,14 @@
 {
   "name": "life-finance-mini-app",
   "version": "1.0.0",
-  "description": "Telegram mini app for finance, food, sport and planner",
+  "description": "Telegram mini app for finance, planner and habits",
   "main": "bot.js",
   "scripts": {
     "start-bot": "node bot.js"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.99.2",
+    "@supabase/supabase-js": "^2.49.1",
+    "dotenv": "^16.4.7",
     "node-telegram-bot-api": "^0.66.0"
   }
 }

@@ -152,7 +152,8 @@ label {
 
 .operation-item,
 .recurring-item,
-.task-row {
+.task-row,
+.habit-row {
   padding: 12px;
   border: 1px solid #e5e7eb;
   border-radius: 14px;
@@ -183,7 +184,8 @@ label {
 }
 
 .operation-actions,
-.recurring-actions {
+.recurring-actions,
+.habit-actions {
   display: flex;
   gap: 8px;
 }
@@ -201,7 +203,8 @@ label {
 }
 
 .done-btn,
-.recurring-pay-btn {
+.recurring-pay-btn,
+.habit-log-btn {
   background: #16a34a;
   padding: 10px 12px;
   font-size: 13px;
@@ -210,7 +213,8 @@ label {
 .category-row,
 .goal-row,
 .budget-row,
-.chart-row {
+.chart-row,
+.habit-progress-row {
   margin-bottom: 12px;
 }
 
@@ -271,6 +275,11 @@ label {
   background: #fff7ed;
   border: 1px solid #fdba74;
   margin-bottom: 10px;
+}
+
+.task-row.done {
+  background: #ecfdf5;
+  border-color: #86efac;
 }
 
 .modal {

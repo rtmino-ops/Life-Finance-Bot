@@ -39,6 +39,9 @@ const state = {
   recurring: [],
   goals: [],
   planner: [],
+  plannerHistory: [],
+  habits: [],
+  habitLogs: [],
   financeFilter: "all",
   periodFilter: "today",
   customDateFrom: null,
@@ -86,6 +89,10 @@ const goalsListEl = document.getElementById("goalsList");
 
 const openPlannerBtn = document.getElementById("openPlannerBtn");
 const plannerListEl = document.getElementById("plannerList");
+const plannerHistoryListEl = document.getElementById("plannerHistoryList");
+
+const openHabitBtn = document.getElementById("openHabitBtn");
+const habitsListEl = document.getElementById("habitsList");
 
 const openFinanceFiltersBtn = document.getElementById("openFinanceFiltersBtn");
 const openBudgetBtn = document.getElementById("openBudgetBtn");
@@ -115,6 +122,12 @@ const plannerTitleEl = document.getElementById("plannerTitle");
 const plannerPeriodEl = document.getElementById("plannerPeriod");
 const plannerDateEl = document.getElementById("plannerDate");
 const savePlannerBtn = document.getElementById("savePlannerBtn");
+
+const habitModal = document.getElementById("habitModal");
+const habitTitleEl = document.getElementById("habitTitle");
+const habitPeriodEl = document.getElementById("habitPeriod");
+const habitTargetEl = document.getElementById("habitTarget");
+const saveHabitBtn = document.getElementById("saveHabitBtn");
 
 const operationsListEl = document.getElementById("operationsList");
 const foodListEl = document.getElementById("foodList");
@@ -185,6 +198,10 @@ function initTelegramUser() {
 function getMonthKey() {
   const now = new Date();
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function getTodayDateString() {
+  return new Date().toISOString().slice(0, 10);
 }
 
 function fillFinanceCategories(type, selectedValue = null) {
@@ -339,6 +356,43 @@ async function loadPlanner() {
   state.planner = data || [];
 }
 
+async function loadPlannerHistory() {
+  const { data, error } = await supabaseClient
+    .from("planner_task_logs")
+    .select("*")
+    .eq("telegram_id", state.telegramId)
+    .order("completed_at", { ascending: false });
+
+  if (error) throw error;
+
+  state.plannerHistory = data || [];
+}
+
+async function loadHabits() {
+  const { data, error } = await supabaseClient
+    .from("habits")
+    .select("*")
+    .eq("telegram_id", state.telegramId)
+    .eq("is_active", true)
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+
+  state.habits = data || [];
+}
+
+async function loadHabitLogs() {
+  const { data, error } = await supabaseClient
+    .from("habit_logs")
+    .select("*")
+    .eq("telegram_id", state.telegramId)
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+
+  state.habitLogs = data || [];
+}
+
 function formatDate(dateString) {
   return new Date(dateString).toLocaleString("ru-RU");
 }
@@ -406,6 +460,34 @@ function getGroupedByCategory(recordType) {
       grouped[item.category] = (grouped[item.category] || 0) + Number(item.amount);
     });
   return grouped;
+}
+
+function getHabitProgress(habit) {
+  const today = new Date();
+
+  let logs = state.habitLogs.filter(log => log.habit_id === habit.id);
+
+  if (habit.period_type === "day") {
+    const todayStr = getTodayDateString();
+    logs = logs.filter(log => log.log_date === todayStr);
+  }
+
+  if (habit.period_type === "week") {
+    const from = new Date();
+    from.setDate(today.getDate() - 7);
+    logs = logs.filter(log => new Date(log.log_date) >= from);
+  }
+
+  if (habit.period_type === "month") {
+    const monthKey = getMonthKey();
+    logs = logs.filter(log => {
+      const d = new Date(log.log_date);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      return key === monthKey;
+    });
+  }
+
+  return logs.length;
 }
 
 function renderSummary() {
@@ -719,30 +801,125 @@ function renderGoals() {
 function renderPlanner() {
   if (!plannerListEl) return;
 
-  if (!state.planner.length) {
+  const activeTasks = state.planner.filter(item => !item.is_done);
+
+  if (!activeTasks.length) {
     plannerListEl.textContent = "Пока нет задач";
     return;
   }
 
-  plannerListEl.innerHTML = state.planner.map(item => `
+  plannerListEl.innerHTML = activeTasks.map(item => `
     <div class="task-row">
       <div class="task-top">
         <div>
           <div class="operation-type">${item.title}</div>
           <div class="operation-date">${item.period_type} | ${item.due_date || "без даты"}</div>
         </div>
-        <button class="${item.is_done ? "edit-btn" : "done-btn"}" data-task-id="${item.id}">
-          ${item.is_done ? "Сделано" : "Выполнить"}
-        </button>
+        <div class="operation-actions">
+          <button class="done-btn" data-task-id="${item.id}">Выполнить</button>
+          <button class="delete-btn" data-task-delete-id="${item.id}">Удалить</button>
+        </div>
       </div>
     </div>
   `).join("");
 
   document.querySelectorAll("[data-task-id]").forEach(btn => {
     btn.addEventListener("click", async () => {
-      await togglePlannerTask(btn.dataset.taskId);
+      await completePlannerTask(btn.dataset.taskId);
     });
   });
+
+  document.querySelectorAll("[data-task-delete-id]").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      await deletePlannerTask(btn.dataset.taskDeleteId);
+    });
+  });
+}
+
+function renderPlannerHistory() {
+  if (!plannerHistoryListEl) return;
+
+  if (!state.plannerHistory.length) {
+    plannerHistoryListEl.textContent = "Пока нет выполненных задач";
+    return;
+  }
+
+  plannerHistoryListEl.innerHTML = state.plannerHistory.map(item => `
+    <div class="task-row done">
+      <div class="task-top">
+        <div>
+          <div class="operation-type">${item.title}</div>
+          <div class="operation-date">${item.period_type} | выполнено: ${formatDate(item.completed_at)}</div>
+        </div>
+      </div>
+    </div>
+  `).join("");
+}
+
+function renderHabits() {
+  if (!habitsListEl) return;
+
+  if (!state.habits.length) {
+    habitsListEl.textContent = "Пока нет привычек";
+    return;
+  }
+
+  habitsListEl.innerHTML = state.habits.map(habit => {
+    const doneCount = getHabitProgress(habit);
+    const percent = habit.target_count > 0
+      ? Math.min((doneCount / habit.target_count) * 100, 100)
+      : 0;
+
+    return `
+      <div class="habit-row">
+        <div class="category-label">
+          <span>${habit.title}</span>
+          <strong>${doneCount} / ${habit.target_count}</strong>
+        </div>
+        <div class="operation-date">${habit.period_type}</div>
+        <div class="category-bar">
+          <div class="category-bar-fill" style="width:${percent}%"></div>
+        </div>
+        <div class="habit-actions" style="margin-top:10px;">
+          <button class="habit-log-btn" data-habit-id="${habit.id}">Отметить выполнение</button>
+        </div>
+      </div>
+    `;
+  }).join("");
+
+  document.querySelectorAll("[data-habit-id]").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      await logHabitCompletion(btn.dataset.habitId);
+    });
+  });
+}
+
+function getHabitProgress(habit) {
+  const today = new Date();
+
+  let logs = state.habitLogs.filter(log => Number(log.habit_id) === Number(habit.id));
+
+  if (habit.period_type === "day") {
+    const todayStr = getTodayDateString();
+    logs = logs.filter(log => log.log_date === todayStr);
+  }
+
+  if (habit.period_type === "week") {
+    const from = new Date();
+    from.setDate(today.getDate() - 7);
+    logs = logs.filter(log => new Date(log.log_date) >= from);
+  }
+
+  if (habit.period_type === "month") {
+    const monthKey = getMonthKey();
+    logs = logs.filter(log => {
+      const d = new Date(log.log_date);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      return key === monthKey;
+    });
+  }
+
+  return logs.length;
 }
 
 function getReminders() {
@@ -773,9 +950,14 @@ function getReminders() {
     }
   }
 
-  state.planner.forEach(task => {
-    if (!task.is_done) {
-      reminders.push(`Задача: ${task.title}`);
+  state.planner.filter(task => !task.is_done).forEach(task => {
+    reminders.push(`Задача: ${task.title}`);
+  });
+
+  state.habits.forEach(habit => {
+    const doneCount = getHabitProgress(habit);
+    if (doneCount < habit.target_count) {
+      reminders.push(`Привычка: ${habit.title} (${doneCount}/${habit.target_count})`);
     }
   });
 
@@ -801,12 +983,16 @@ function renderAll() {
   renderFood();
   renderSport();
   renderPeriodAnalytics();
-  renderFinanceCharts();
+  renderVisualSummaryChart();
+  renderVisualCategoryChart(incomeCategoryChartEl, getGroupedByCategory("income"), "income");
+  renderVisualCategoryChart(expenseCategoryChartEl, getGroupedByCategory("expense"), "expense");
   renderBudgetBlock();
   renderCategoryBudgets();
   renderRecurring();
   renderGoals();
   renderPlanner();
+  renderPlannerHistory();
+  renderHabits();
   renderReminders();
 }
 
@@ -1113,23 +1299,123 @@ async function savePlannerTask() {
   renderAll();
 }
 
-async function togglePlannerTask(id) {
+async function completePlannerTask(id) {
   const item = state.planner.find(t => t.id === Number(id));
   if (!item) return;
 
+  const { error: logError } = await supabaseClient
+    .from("planner_task_logs")
+    .insert({
+      telegram_id: state.telegramId,
+      task_id: item.id,
+      title: item.title,
+      period_type: item.period_type
+    });
+
+  if (logError) {
+    console.error(logError);
+    alert("Ошибка логирования задачи");
+    return;
+  }
+
   const { error } = await supabaseClient
     .from("planner_tasks")
-    .update({ is_done: !item.is_done })
+    .update({ is_done: true })
     .eq("id", id)
     .eq("telegram_id", state.telegramId);
 
   if (error) {
     console.error(error);
-    alert("Ошибка обновления задачи");
+    alert("Ошибка завершения задачи");
     return;
   }
 
   await loadPlanner();
+  await loadPlannerHistory();
+  renderAll();
+}
+
+async function deletePlannerTask(id) {
+  const { error } = await supabaseClient
+    .from("planner_tasks")
+    .delete()
+    .eq("id", id)
+    .eq("telegram_id", state.telegramId);
+
+  if (error) {
+    console.error(error);
+    alert("Ошибка удаления задачи");
+    return;
+  }
+
+  await loadPlanner();
+  renderAll();
+}
+
+async function saveHabit() {
+  const title = habitTitleEl.value.trim();
+  const period_type = habitPeriodEl.value;
+  const target_count = Number(habitTargetEl.value);
+
+  if (!title || !target_count || target_count <= 0) {
+    alert("Заполни привычку корректно");
+    return;
+  }
+
+  const { error } = await supabaseClient
+    .from("habits")
+    .insert({
+      telegram_id: state.telegramId,
+      title,
+      period_type,
+      target_count,
+      is_active: true
+    });
+
+  if (error) {
+    console.error(error);
+    alert("Ошибка сохранения привычки");
+    return;
+  }
+
+  habitTitleEl.value = "";
+  habitTargetEl.value = "";
+
+  closeModal(habitModal);
+  await loadHabits();
+  renderAll();
+}
+
+async function logHabitCompletion(habitId) {
+  const today = getTodayDateString();
+
+  const { data } = await supabaseClient
+    .from("habit_logs")
+    .select("*")
+    .eq("telegram_id", state.telegramId)
+    .eq("habit_id", habitId)
+    .eq("log_date", today);
+
+  if (data && data.length) {
+    alert("Сегодня выполнение уже отмечено");
+    return;
+  }
+
+  const { error } = await supabaseClient
+    .from("habit_logs")
+    .insert({
+      telegram_id: state.telegramId,
+      habit_id: habitId,
+      log_date: today
+    });
+
+  if (error) {
+    console.error(error);
+    alert("Ошибка отметки привычки");
+    return;
+  }
+
+  await loadHabitLogs();
   renderAll();
 }
 
@@ -1200,6 +1486,9 @@ async function initApp() {
     await loadRecurring();
     await loadGoals();
     await loadPlanner();
+    await loadPlannerHistory();
+    await loadHabits();
+    await loadHabitLogs();
     renderAll();
   } catch (error) {
     console.error("initApp fatal error", error);
@@ -1292,6 +1581,7 @@ if (sportAddBtn) sportAddBtn.addEventListener("click", () => openModal(sportModa
 if (openRecurringBtn) openRecurringBtn.addEventListener("click", () => openModal(recurringModal));
 if (openGoalBtn) openGoalBtn.addEventListener("click", () => openModal(goalModal));
 if (openPlannerBtn) openPlannerBtn.addEventListener("click", () => openModal(plannerModal));
+if (openHabitBtn) openHabitBtn.addEventListener("click", () => openModal(habitModal));
 
 if (openFinanceFiltersBtn) openFinanceFiltersBtn.addEventListener("click", () => openModal(financeFiltersModal));
 if (openBudgetBtn) openBudgetBtn.addEventListener("click", () => openModal(budgetModal));
@@ -1306,5 +1596,6 @@ if (saveCategoryBudgetBtn) saveCategoryBudgetBtn.addEventListener("click", saveC
 if (saveRecurringBtn) saveRecurringBtn.addEventListener("click", saveRecurringPayment);
 if (saveGoalBtn) saveGoalBtn.addEventListener("click", saveGoal);
 if (savePlannerBtn) savePlannerBtn.addEventListener("click", savePlannerTask);
+if (saveHabitBtn) saveHabitBtn.addEventListener("click", saveHabit);
 
 initApp();

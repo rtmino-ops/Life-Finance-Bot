@@ -29,6 +29,7 @@
     </nav>
 
     <main>
+      <!-- HOME -->
       <section class="tab-content active" id="home">
         <div class="card">
           <h2>Быстрые действия</h2>
@@ -76,6 +77,7 @@
         </div>
       </section>
 
+      <!-- FINANCE -->
       <section class="tab-content" id="finance">
         <div class="card">
           <h2>Доходы vs Расходы</h2>
@@ -103,6 +105,7 @@
         </div>
       </section>
 
+      <!-- FOOD -->
       <section class="tab-content" id="food">
         <div class="card">
           <div class="row-between">
@@ -113,6 +116,7 @@
         </div>
       </section>
 
+      <!-- SPORT -->
       <section class="tab-content" id="sport">
         <div class="card">
           <div class="row-between">
@@ -123,6 +127,7 @@
         </div>
       </section>
 
+      <!-- PLANNER -->
       <section class="tab-content" id="planner">
         <div class="card">
           <div class="row-between">
@@ -130,6 +135,11 @@
             <button id="openPlannerBtn">Добавить задачу</button>
           </div>
           <div id="plannerList">Пока нет задач</div>
+        </div>
+
+        <div class="card">
+          <h2>История задач</h2>
+          <div id="plannerHistoryList">Пока нет выполненных задач</div>
         </div>
 
         <div class="card">
@@ -358,7 +368,7 @@
     </div>
   </div>
 
-  <!-- PLANNER MODAL -->
+  <!-- PLANNER TASK MODAL -->
   <div class="modal hidden" id="plannerModal">
     <div class="modal-content">
       <div class="modal-header">
@@ -380,6 +390,31 @@
       <input type="date" id="plannerDate" />
 
       <button id="savePlannerBtn">Сохранить</button>
+    </div>
+  </div>
+
+  <!-- HABIT MODAL -->
+  <div class="modal hidden" id="habitModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Новая привычка</h3>
+        <button class="close-btn" data-close="habitModal">✕</button>
+      </div>
+
+      <label>Название привычки</label>
+      <input type="text" id="habitTitle" placeholder="Например: отжимания" />
+
+      <label>Тип периода</label>
+      <select id="habitPeriod">
+        <option value="day">День</option>
+        <option value="week">Неделя</option>
+        <option value="month">Месяц</option>
+      </select>
+
+      <label>Цель</label>
+      <input type="number" id="habitTarget" placeholder="Например 20" />
+
+      <button id="saveHabitBtn">Сохранить</button>
     </div>
   </div>
 

@@ -1,3 +1,5 @@
+require("dotenv").config();
+
 const TelegramBot = require("node-telegram-bot-api");
 const { createClient } = require("@supabase/supabase-js");
 
@@ -64,9 +66,7 @@ async function buildReminderText(userId) {
     .eq("telegram_id", userId)
     .maybeSingle();
 
-  if (!settings || !settings.reminders_enabled) {
-    return null;
-  }
+  if (!settings || !settings.reminders_enabled) return null;
 
   if (settings.finance_enabled) {
     const { data: recurring } = await supabase
@@ -117,16 +117,26 @@ async function buildReminderText(userId) {
   }
 
   if (settings.planner_enabled) {
-    const { data: planner } = await supabase
+    const { data: tasks } = await supabase
       .from("planner_tasks")
       .select("*")
       .eq("telegram_id", userId)
       .eq("is_done", false);
 
-    if (planner && planner.length) {
-      planner.slice(0, 5).forEach(task => {
+    if (tasks && tasks.length) {
+      tasks.slice(0, 5).forEach(task => {
         messages.push(`📝 Задача: ${task.title}`);
       });
+    }
+
+    const { data: habits } = await supabase
+      .from("habits")
+      .select("*")
+      .eq("telegram_id", userId)
+      .eq("is_active", true);
+
+    if (habits && habits.length) {
+      messages.push(`🔁 Активных привычек: ${habits.length}`);
     }
   }
 
@@ -146,7 +156,7 @@ bot.onText(/\/reminders/, async (msg) => {
 
     await bot.sendMessage(msg.chat.id, text);
   } catch (error) {
-    console.error("reminders command error:", error.message);
+    console.error("reminders error:", error.message);
     await bot.sendMessage(msg.chat.id, "Не удалось получить напоминания.");
   }
 });
