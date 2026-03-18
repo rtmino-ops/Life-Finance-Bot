@@ -87,6 +87,16 @@ const goalsListEl = document.getElementById("goalsList");
 const openPlannerBtn = document.getElementById("openPlannerBtn");
 const plannerListEl = document.getElementById("plannerList");
 
+const openFinanceFiltersBtn = document.getElementById("openFinanceFiltersBtn");
+const openBudgetBtn = document.getElementById("openBudgetBtn");
+const openCategoryBudgetBtn = document.getElementById("openCategoryBudgetBtn");
+const openFinanceHistoryBtn = document.getElementById("openFinanceHistoryBtn");
+
+const financeFiltersModal = document.getElementById("financeFiltersModal");
+const budgetModal = document.getElementById("budgetModal");
+const categoryBudgetModal = document.getElementById("categoryBudgetModal");
+const financeHistoryModal = document.getElementById("financeHistoryModal");
+
 const recurringModal = document.getElementById("recurringModal");
 const recurringTitleEl = document.getElementById("recurringTitle");
 const recurringAmountEl = document.getElementById("recurringAmount");
@@ -130,8 +140,6 @@ const sportValueInput = document.getElementById("sportValue");
 
 const openIncomeBtn = document.getElementById("openIncomeBtn");
 const openExpenseBtn = document.getElementById("openExpenseBtn");
-const financeIncomeBtn = document.getElementById("financeIncomeBtn");
-const financeExpenseBtn = document.getElementById("financeExpenseBtn");
 
 const openFoodBtn = document.getElementById("openFoodBtn");
 const foodAddBtn = document.getElementById("foodAddBtn");
@@ -1204,15 +1212,8 @@ document.querySelectorAll(".tab").forEach(tab => {
     document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
     document.querySelectorAll(".tab-content").forEach(c => c.classList.remove("active"));
     tab.classList.add("active");
-
     const section = document.getElementById(tab.dataset.tab);
     if (section) section.classList.add("active");
-
-    if (tab.dataset.tab === "finance") {
-      setTimeout(() => {
-        renderFinanceCharts();
-      }, 100);
-    }
   });
 });
 
@@ -1235,7 +1236,6 @@ document.querySelectorAll(".filter-btn").forEach(btn => {
     btn.classList.add("active");
     state.financeFilter = btn.dataset.filter;
     renderOperations();
-    renderFinanceCharts();
   });
 });
 
@@ -1280,8 +1280,6 @@ if (categoryFilterEl) {
 
 if (openIncomeBtn) openIncomeBtn.addEventListener("click", () => openFinanceModal("income"));
 if (openExpenseBtn) openExpenseBtn.addEventListener("click", () => openFinanceModal("expense"));
-if (financeIncomeBtn) financeIncomeBtn.addEventListener("click", () => openFinanceModal("income"));
-if (financeExpenseBtn) financeExpenseBtn.addEventListener("click", () => openFinanceModal("expense"));
 
 if (openFoodBtn) openFoodBtn.addEventListener("click", () => openModal(foodModal));
 if (foodAddBtn) foodAddBtn.addEventListener("click", () => openModal(foodModal));
@@ -1292,6 +1290,11 @@ if (sportAddBtn) sportAddBtn.addEventListener("click", () => openModal(sportModa
 if (openRecurringBtn) openRecurringBtn.addEventListener("click", () => openModal(recurringModal));
 if (openGoalBtn) openGoalBtn.addEventListener("click", () => openModal(goalModal));
 if (openPlannerBtn) openPlannerBtn.addEventListener("click", () => openModal(plannerModal));
+
+if (openFinanceFiltersBtn) openFinanceFiltersBtn.addEventListener("click", () => openModal(financeFiltersModal));
+if (openBudgetBtn) openBudgetBtn.addEventListener("click", () => openModal(budgetModal));
+if (openCategoryBudgetBtn) openCategoryBudgetBtn.addEventListener("click", () => openModal(categoryBudgetModal));
+if (openFinanceHistoryBtn) openFinanceHistoryBtn.addEventListener("click", () => openModal(financeHistoryModal));
 
 if (saveFinanceBtn) saveFinanceBtn.addEventListener("click", saveFinance);
 if (saveFoodBtn) saveFoodBtn.addEventListener("click", saveFood);

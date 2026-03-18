@@ -32,7 +32,7 @@ body {
 
 .tabs {
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   gap: 8px;
   margin-bottom: 16px;
 }
@@ -69,9 +69,21 @@ body {
 
 .grid,
 .period-grid,
-.summary-grid {
+.summary-grid,
+.menu-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.row-between,
+.operation-top,
+.task-top,
+.category-label,
+.chart-row-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   gap: 10px;
 }
 
@@ -145,16 +157,6 @@ label {
   border: 1px solid #e5e7eb;
   border-radius: 14px;
   margin-bottom: 10px;
-}
-
-.operation-top,
-.task-top,
-.category-label,
-.chart-row-label {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 10px;
 }
 
 .operation-type {
@@ -240,11 +242,6 @@ label {
 
 .chart-bar-fill.expense {
   background: #dc2626;
-}
-
-.chart-section-title {
-  margin-bottom: 10px;
-  font-weight: bold;
 }
 
 .custom-period-box {
