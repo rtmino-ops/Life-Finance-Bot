@@ -140,6 +140,8 @@ const sportValueInput = document.getElementById("sportValue");
 
 const openIncomeBtn = document.getElementById("openIncomeBtn");
 const openExpenseBtn = document.getElementById("openExpenseBtn");
+const openIncomeBtn2 = document.getElementById("openIncomeBtn2");
+const openExpenseBtn2 = document.getElementById("openExpenseBtn2");
 
 const openFoodBtn = document.getElementById("openFoodBtn");
 const foodAddBtn = document.getElementById("foodAddBtn");
@@ -1191,7 +1193,6 @@ async function initApp() {
     fillCategoryBudgetSelect();
     fillRecurringCategorySelect();
     await ensureProfile();
-
     await loadFinance();
     await loadFood();
     await loadSport();
@@ -1199,7 +1200,6 @@ async function initApp() {
     await loadRecurring();
     await loadGoals();
     await loadPlanner();
-
     renderAll();
   } catch (error) {
     console.error("initApp fatal error", error);
@@ -1280,6 +1280,8 @@ if (categoryFilterEl) {
 
 if (openIncomeBtn) openIncomeBtn.addEventListener("click", () => openFinanceModal("income"));
 if (openExpenseBtn) openExpenseBtn.addEventListener("click", () => openFinanceModal("expense"));
+if (openIncomeBtn2) openIncomeBtn2.addEventListener("click", () => openFinanceModal("income"));
+if (openExpenseBtn2) openExpenseBtn2.addEventListener("click", () => openFinanceModal("expense"));
 
 if (openFoodBtn) openFoodBtn.addEventListener("click", () => openModal(foodModal));
 if (foodAddBtn) foodAddBtn.addEventListener("click", () => openModal(foodModal));
