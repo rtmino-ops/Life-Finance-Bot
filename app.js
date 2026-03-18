@@ -42,6 +42,7 @@ const state = {
   plannerHistory: [],
   habits: [],
   habitLogs: [],
+  reminderStates: [],
   financeFilter: "all",
   periodFilter: "today",
   customDateFrom: null,
@@ -393,6 +394,20 @@ async function loadHabitLogs() {
   state.habitLogs = data || [];
 }
 
+async function loadReminderStates() {
+  const today = getTodayDateString();
+
+  const { data, error } = await supabaseClient
+    .from("reminder_states")
+    .select("*")
+    .eq("telegram_id", state.telegramId)
+    .eq("action_date", today);
+
+  if (error) throw error;
+
+  state.reminderStates = data || [];
+}
+
 function formatDate(dateString) {
   return new Date(dateString).toLocaleString("ru-RU");
 }
@@ -464,8 +479,7 @@ function getGroupedByCategory(recordType) {
 
 function getHabitProgress(habit) {
   const today = new Date();
-
-  let logs = state.habitLogs.filter(log => log.habit_id === habit.id);
+  let logs = state.habitLogs.filter(log => Number(log.habit_id) === Number(habit.id));
 
   if (habit.period_type === "day") {
     const todayStr = getTodayDateString();
@@ -488,6 +502,32 @@ function getHabitProgress(habit) {
   }
 
   return logs.length;
+}
+
+function hasReminderState(type, key) {
+  return state.reminderStates.some(
+    item => item.reminder_type === type && item.reminder_key === key
+  );
+}
+
+async function setReminderState(type, key, actionType) {
+  const today = getTodayDateString();
+
+  const { error } = await supabaseClient
+    .from("reminder_states")
+    .insert({
+      telegram_id: state.telegramId,
+      reminder_type: type,
+      reminder_key: key,
+      action_type: actionType,
+      action_date: today
+    });
+
+  if (error) {
+    console.error(error);
+  }
+
+  await loadReminderStates();
 }
 
 function renderSummary() {
@@ -894,35 +934,7 @@ function renderHabits() {
   });
 }
 
-function getHabitProgress(habit) {
-  const today = new Date();
-
-  let logs = state.habitLogs.filter(log => Number(log.habit_id) === Number(habit.id));
-
-  if (habit.period_type === "day") {
-    const todayStr = getTodayDateString();
-    logs = logs.filter(log => log.log_date === todayStr);
-  }
-
-  if (habit.period_type === "week") {
-    const from = new Date();
-    from.setDate(today.getDate() - 7);
-    logs = logs.filter(log => new Date(log.log_date) >= from);
-  }
-
-  if (habit.period_type === "month") {
-    const monthKey = getMonthKey();
-    logs = logs.filter(log => {
-      const d = new Date(log.log_date);
-      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-      return key === monthKey;
-    });
-  }
-
-  return logs.length;
-}
-
-function getReminders() {
+function buildReminderCards() {
   const reminders = [];
   const today = new Date().getDate();
   const monthKey = getMonthKey();
@@ -934,47 +946,179 @@ function getReminders() {
   });
 
   state.recurring.forEach(item => {
-    if (item.day_of_month === today) {
-      reminders.push(`Сегодня регулярный платеж: ${item.title} — ${item.amount}`);
-    } else if (item.day_of_month > today && item.day_of_month - today <= 3) {
-      reminders.push(`Скоро платеж: ${item.title} (${item.day_of_month} числа)`);
+    const reminderKey = `payment-${item.id}-${monthKey}`;
+    if (hasReminderState("payment", reminderKey)) return;
+
+    if (item.day_of_month === today || (item.day_of_month > today && item.day_of_month - today <= 3)) {
+      reminders.push({
+        type: "payment",
+        key: reminderKey,
+        title: item.day_of_month === today
+          ? `Сегодня регулярный платеж: ${item.title} — ${item.amount}`
+          : `Скоро платеж: ${item.title} (${item.day_of_month} числа)`,
+        payload: item
+      });
     }
   });
 
   if (state.monthlyBudget > 0) {
     const spent = monthExpenses.reduce((sum, item) => sum + Number(item.amount), 0);
-    if (spent >= state.monthlyBudget) {
-      reminders.push("Месячный бюджет превышен");
-    } else if (spent >= state.monthlyBudget * 0.8) {
-      reminders.push("Бюджет месяца почти исчерпан");
+
+    if (spent >= state.monthlyBudget * 0.8) {
+      const reminderKey = `budget-${monthKey}-${spent >= state.monthlyBudget ? "100" : "80"}`;
+      if (!hasReminderState("budget", reminderKey)) {
+        reminders.push({
+          type: "budget",
+          key: reminderKey,
+          title: spent >= state.monthlyBudget
+            ? "Бюджет месяца превышен"
+            : "Бюджет месяца почти исчерпан",
+          payload: null
+        });
+      }
     }
   }
 
   state.planner.filter(task => !task.is_done).forEach(task => {
-    reminders.push(`Задача: ${task.title}`);
+    const reminderKey = `task-${task.id}`;
+    if (hasReminderState("task", reminderKey)) return;
+
+    reminders.push({
+      type: "task",
+      key: reminderKey,
+      title: `Задача: ${task.title}`,
+      payload: task
+    });
   });
 
   state.habits.forEach(habit => {
     const doneCount = getHabitProgress(habit);
-    if (doneCount < habit.target_count) {
-      reminders.push(`Привычка: ${habit.title} (${doneCount}/${habit.target_count})`);
-    }
+    if (doneCount >= habit.target_count) return;
+
+    const reminderKey = `habit-${habit.id}-${getTodayDateString()}`;
+    if (hasReminderState("habit", reminderKey)) return;
+
+    reminders.push({
+      type: "habit",
+      key: reminderKey,
+      title: `Привычка: ${habit.title} (${doneCount}/${habit.target_count})`,
+      payload: habit
+    });
   });
 
-  return reminders;
+  return reminders.slice(0, 8);
 }
 
 function renderReminders() {
   if (!remindersListEl) return;
 
-  const reminders = getReminders();
+  const reminders = buildReminderCards();
 
   if (!reminders.length) {
     remindersListEl.textContent = "Пока нет напоминаний";
     return;
   }
 
-  remindersListEl.innerHTML = reminders.map(item => `<div class="reminder-item">${item}</div>`).join("");
+  remindersListEl.innerHTML = reminders.map(item => {
+    let buttons = "";
+
+    if (item.type === "payment") {
+      buttons = `
+        <div class="reminder-actions">
+          <button class="reminder-btn-done" data-reminder-action="payment-done" data-reminder-key="${item.key}" data-item-id="${item.payload.id}">
+            Выполнить
+          </button>
+          <button class="reminder-btn-later" data-reminder-action="later" data-reminder-key="${item.key}" data-reminder-type="payment">
+            Позже
+          </button>
+        </div>
+      `;
+    }
+
+    if (item.type === "task") {
+      buttons = `
+        <div class="reminder-actions">
+          <button class="reminder-btn-done" data-reminder-action="task-done" data-reminder-key="${item.key}" data-item-id="${item.payload.id}">
+            Выполнить
+          </button>
+          <button class="reminder-btn-later" data-reminder-action="later" data-reminder-key="${item.key}" data-reminder-type="task">
+            Позже
+          </button>
+          <button class="reminder-btn-hide" data-reminder-action="dismiss" data-reminder-key="${item.key}" data-reminder-type="task">
+            Удалить
+          </button>
+        </div>
+      `;
+    }
+
+    if (item.type === "habit") {
+      buttons = `
+        <div class="reminder-actions">
+          <button class="reminder-btn-done" data-reminder-action="habit-done" data-reminder-key="${item.key}" data-item-id="${item.payload.id}">
+            Выполнить
+          </button>
+          <button class="reminder-btn-hide" data-reminder-action="dismiss" data-reminder-key="${item.key}" data-reminder-type="habit">
+            Скрыть
+          </button>
+        </div>
+      `;
+    }
+
+    if (item.type === "budget") {
+      buttons = `
+        <div class="reminder-actions">
+          <button class="reminder-btn-hide" data-reminder-action="dismiss" data-reminder-key="${item.key}" data-reminder-type="budget">
+            Понятно
+          </button>
+        </div>
+      `;
+    }
+
+    return `
+      <div class="reminder-item">
+        <div>${item.title}</div>
+        ${buttons}
+      </div>
+    `;
+  }).join("");
+
+  document.querySelectorAll("[data-reminder-action]").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const action = btn.dataset.reminderAction;
+      const reminderKey = btn.dataset.reminderKey;
+      const reminderType = btn.dataset.reminderType;
+      const itemId = btn.dataset.itemId;
+
+      if (action === "payment-done") {
+        const item = state.recurring.find(x => x.id === Number(itemId));
+        if (item) {
+          await applyRecurringPayment(item);
+          await setReminderState("payment", reminderKey, "done");
+        }
+      }
+
+      if (action === "task-done") {
+        await completePlannerTask(itemId);
+        await setReminderState("task", reminderKey, "done");
+      }
+
+      if (action === "habit-done") {
+        await logHabitCompletion(itemId);
+        await setReminderState("habit", reminderKey, "done");
+      }
+
+      if (action === "later") {
+        await setReminderState(reminderType, reminderKey, "later");
+      }
+
+      if (action === "dismiss") {
+        await setReminderState(reminderType, reminderKey, "dismissed");
+      }
+
+      await loadReminderStates();
+      renderAll();
+    });
+  });
 }
 
 function renderAll() {
@@ -1489,6 +1633,7 @@ async function initApp() {
     await loadPlannerHistory();
     await loadHabits();
     await loadHabitLogs();
+    await loadReminderStates();
     renderAll();
   } catch (error) {
     console.error("initApp fatal error", error);
