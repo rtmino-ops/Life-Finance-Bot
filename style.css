@@ -1,7 +1,7 @@
 body {
   margin: 0;
   font-family: Arial, sans-serif;
-  background: #f4f7fb;
+  background: linear-gradient(180deg, #eef4ff 0%, #f7faff 100%);
   color: #1f2937;
 }
 
@@ -11,44 +11,85 @@ body {
   padding: 16px;
 }
 
+.glass {
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 12px 30px rgba(30, 64, 175, 0.08);
+}
+
 .topbar {
   display: flex;
   justify-content: space-between;
   gap: 12px;
   margin-bottom: 16px;
-  background: white;
-  padding: 16px;
-  border-radius: 18px;
-  box-shadow: 0 4px 18px rgba(0,0,0,0.08);
+  padding: 18px;
+  border-radius: 24px;
+  background: rgba(255,255,255,0.92);
+  box-shadow: 0 12px 30px rgba(30, 64, 175, 0.10);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.logo-dot {
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  font-weight: bold;
+  box-shadow: 0 8px 20px rgba(37, 99, 235, 0.35);
 }
 
 .topbar h1 {
-  margin: 0 0 6px;
+  margin: 0 0 4px;
+  font-size: 24px;
 }
 
-.summary-box {
+.balance-box {
   text-align: right;
+  min-width: 100px;
+}
+
+.balance-box span {
+  display: block;
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.balance-box strong {
+  font-size: 24px;
 }
 
 .tabs {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
-  gap: 8px;
-  margin-bottom: 16px;
+  gap: 10px;
+  margin-bottom: 18px;
 }
 
 .tab {
   border: none;
-  background: #dbeafe;
-  padding: 12px 8px;
-  border-radius: 12px;
+  background: rgba(255,255,255,0.75);
+  color: #64748b;
+  padding: 14px 8px;
+  border-radius: 18px;
   cursor: pointer;
-  font-size: 13px;
+  font-size: 14px;
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.06);
 }
 
 .tab.active {
-  background: #2563eb;
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
   color: white;
+  box-shadow: 0 10px 22px rgba(37, 99, 235, 0.35);
 }
 
 .tab-content {
@@ -60,11 +101,17 @@ body {
 }
 
 .card {
-  background: white;
-  padding: 16px;
-  border-radius: 18px;
+  background: rgba(255,255,255,0.92);
+  border-radius: 28px;
+  padding: 20px;
+  margin-bottom: 18px;
+  box-shadow: 0 16px 36px rgba(15, 23, 42, 0.08);
+}
+
+.card h2 {
+  margin-top: 0;
   margin-bottom: 16px;
-  box-shadow: 0 4px 18px rgba(0,0,0,0.08);
+  font-size: 22px;
 }
 
 .grid,
@@ -73,7 +120,39 @@ body {
 .menu-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 10px;
+  gap: 12px;
+}
+
+.action-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.action-btn {
+  font-size: 18px;
+  font-weight: 700;
+  padding: 18px;
+  border-radius: 24px;
+  color: white;
+  box-shadow: 0 14px 28px rgba(0,0,0,0.08);
+}
+
+.action-btn.blue {
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+}
+
+.action-btn.red {
+  background: linear-gradient(135deg, #ff6b6b, #ff4d4f);
+}
+
+.action-btn.green {
+  background: linear-gradient(135deg, #34d399, #10b981);
+}
+
+.action-btn.orange {
+  background: linear-gradient(135deg, #fbbf24, #fb923c);
 }
 
 .row-between,
@@ -88,48 +167,53 @@ body {
 }
 
 .summary-item {
-  background: #f9fafb;
-  border-radius: 14px;
-  padding: 14px;
+  background: #f8fafc;
+  border-radius: 20px;
+  padding: 16px;
 }
 
 .summary-item span {
   display: block;
-  margin-bottom: 6px;
-  color: #6b7280;
+  margin-bottom: 8px;
+  color: #64748b;
 }
 
 .summary-item strong {
-  font-size: 20px;
+  font-size: 26px;
 }
 
 .income-box {
-  background: #dcfce7;
+  background: linear-gradient(135deg, #dcfce7, #bbf7d0);
 }
 
 .expense-box {
-  background: #fee2e2;
+  background: linear-gradient(135deg, #fee2e2, #fecaca);
+}
+
+.neutral-box {
+  background: linear-gradient(135deg, #f8fafc, #eef2ff);
 }
 
 button {
   border: none;
   padding: 14px;
-  border-radius: 14px;
+  border-radius: 18px;
   background: #2563eb;
   color: white;
   cursor: pointer;
   font-size: 15px;
+  font-weight: 600;
 }
 
 .filter-btn,
 .period-btn {
-  background: #dbeafe;
-  color: #1f2937;
+  background: #e2e8f0;
+  color: #334155;
 }
 
 .filter-btn.active,
 .period-btn.active {
-  background: #2563eb;
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
   color: white;
 }
 
@@ -137,16 +221,17 @@ input,
 select {
   width: 100%;
   box-sizing: border-box;
-  padding: 12px;
-  border-radius: 12px;
-  border: 1px solid #d1d5db;
+  padding: 14px;
+  border-radius: 16px;
+  border: 1px solid #dbe1ea;
   margin-bottom: 12px;
   font-size: 15px;
+  background: white;
 }
 
 label {
   display: block;
-  font-weight: bold;
+  font-weight: 700;
   margin-bottom: 6px;
 }
 
@@ -154,10 +239,11 @@ label {
 .recurring-item,
 .task-row,
 .habit-row {
-  padding: 12px;
+  padding: 14px;
   border: 1px solid #e5e7eb;
-  border-radius: 14px;
-  margin-bottom: 10px;
+  border-radius: 18px;
+  margin-bottom: 12px;
+  background: #fff;
 }
 
 .operation-type {
@@ -178,16 +264,19 @@ label {
 }
 
 .operation-meta {
-  color: #4b5563;
+  color: #475569;
   font-size: 14px;
-  margin-bottom: 8px;
+  margin-top: 6px;
 }
 
 .operation-actions,
 .recurring-actions,
-.habit-actions {
+.habit-actions,
+.reminder-actions {
   display: flex;
   gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 10px;
 }
 
 .edit-btn {
@@ -204,8 +293,21 @@ label {
 
 .done-btn,
 .recurring-pay-btn,
-.habit-log-btn {
+.habit-log-btn,
+.reminder-btn-done {
   background: #16a34a;
+  padding: 10px 12px;
+  font-size: 13px;
+}
+
+.reminder-btn-later {
+  background: #f59e0b;
+  padding: 10px 12px;
+  font-size: 13px;
+}
+
+.reminder-btn-hide {
+  background: #64748b;
   padding: 10px 12px;
   font-size: 13px;
 }
@@ -215,17 +317,17 @@ label {
 .budget-row,
 .chart-row,
 .habit-progress-row {
-  margin-bottom: 12px;
+  margin-bottom: 14px;
 }
 
 .bar-bg,
 .category-bar,
 .chart-bar-bg {
-  height: 12px;
+  height: 14px;
   background: #e5e7eb;
   border-radius: 999px;
   overflow: hidden;
-  margin-top: 6px;
+  margin-top: 8px;
 }
 
 .bar-fill,
@@ -237,15 +339,15 @@ label {
 
 .bar-fill,
 .category-bar-fill {
-  background: #2563eb;
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
 }
 
 .chart-bar-fill.income {
-  background: #16a34a;
+  background: linear-gradient(135deg, #34d399, #10b981);
 }
 
 .chart-bar-fill.expense {
-  background: #dc2626;
+  background: linear-gradient(135deg, #ff6b6b, #ef4444);
 }
 
 .custom-period-box {
@@ -255,26 +357,26 @@ label {
 
 .budget-box {
   margin-top: 16px;
-  background: #f9fafb;
-  border-radius: 14px;
-  padding: 14px;
+  background: #f8fafc;
+  border-radius: 18px;
+  padding: 16px;
 }
 
 .warning-box {
   margin-top: 12px;
   padding: 12px;
-  border-radius: 12px;
+  border-radius: 14px;
   background: #fee2e2;
   color: #991b1b;
   font-weight: bold;
 }
 
 .reminder-item {
-  padding: 12px;
-  border-radius: 12px;
-  background: #fff7ed;
+  padding: 14px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #fff7ed, #ffedd5);
   border: 1px solid #fdba74;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
 }
 
 .task-row.done {
@@ -285,11 +387,12 @@ label {
 .modal {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.5);
+  background: rgba(15, 23, 42, 0.35);
   display: flex;
   align-items: flex-end;
   justify-content: center;
   padding: 12px;
+  z-index: 999;
 }
 
 .hidden {
@@ -297,13 +400,14 @@ label {
 }
 
 .modal-content {
-  background: white;
+  background: rgba(255,255,255,0.96);
   width: 100%;
   max-width: 560px;
-  border-radius: 18px 18px 10px 10px;
-  padding: 16px;
+  border-radius: 26px 26px 12px 12px;
+  padding: 18px;
   max-height: 85vh;
   overflow-y: auto;
+  box-shadow: 0 -16px 36px rgba(15, 23, 42, 0.18);
 }
 
 .modal-header {
@@ -316,7 +420,7 @@ label {
   width: 42px;
   height: 42px;
   padding: 0;
-  border-radius: 12px;
+  border-radius: 14px;
   background: #e5e7eb;
   color: #111827;
 }

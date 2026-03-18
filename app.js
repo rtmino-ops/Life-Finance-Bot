@@ -56,6 +56,7 @@ const state = {
 const userInfoEl = document.getElementById("userInfo");
 const balanceValueEl = document.getElementById("balanceValue");
 const incomeValueEl = document.getElementById("incomeValue");
+const incomeValueDuplicateEl = document.getElementById("incomeValueDuplicate");
 const expenseValueEl = document.getElementById("expenseValue");
 const caloriesValueEl = document.getElementById("caloriesValue");
 const sportCountValueEl = document.getElementById("sportCountValue");
@@ -534,6 +535,7 @@ function renderSummary() {
   state.balance = state.income - state.expense;
   if (balanceValueEl) balanceValueEl.textContent = state.balance;
   if (incomeValueEl) incomeValueEl.textContent = state.income;
+  if (incomeValueDuplicateEl) incomeValueDuplicateEl.textContent = state.income;
   if (expenseValueEl) expenseValueEl.textContent = state.expense;
   if (caloriesValueEl) caloriesValueEl.textContent = state.calories;
   if (sportCountValueEl) sportCountValueEl.textContent = state.sportCount;
@@ -697,12 +699,6 @@ function renderVisualCategoryChart(targetEl, grouped, type) {
       </div>
     `;
   }).join("");
-}
-
-function renderFinanceCharts() {
-  renderVisualSummaryChart();
-  renderVisualCategoryChart(incomeCategoryChartEl, getGroupedByCategory("income"), "income");
-  renderVisualCategoryChart(expenseCategoryChartEl, getGroupedByCategory("expense"), "expense");
 }
 
 function renderBudgetBlock() {
@@ -936,7 +932,8 @@ function renderHabits() {
 
 function buildReminderCards() {
   const reminders = [];
-  const today = new Date().getDate();
+  const today = new Date();
+  const todayDate = today.getDate();
   const monthKey = getMonthKey();
 
   const monthExpenses = state.operations.filter(item => {
@@ -945,15 +942,17 @@ function buildReminderCards() {
     return item.record_type === "expense" && key === monthKey;
   });
 
+  // 1. регулярные платежи - за 3 дня
   state.recurring.forEach(item => {
     const reminderKey = `payment-${item.id}-${monthKey}`;
     if (hasReminderState("payment", reminderKey)) return;
 
-    if (item.day_of_month === today || (item.day_of_month > today && item.day_of_month - today <= 3)) {
+    if (item.day_of_month === todayDate || (item.day_of_month > todayDate && item.day_of_month - todayDate <= 3)) {
       reminders.push({
+        priority: 1,
         type: "payment",
         key: reminderKey,
-        title: item.day_of_month === today
+        title: item.day_of_month === todayDate
           ? `Сегодня регулярный платеж: ${item.title} — ${item.amount}`
           : `Скоро платеж: ${item.title} (${item.day_of_month} числа)`,
         payload: item
@@ -961,36 +960,63 @@ function buildReminderCards() {
     }
   });
 
+  // 2. бюджет
   if (state.monthlyBudget > 0) {
     const spent = monthExpenses.reduce((sum, item) => sum + Number(item.amount), 0);
 
-    if (spent >= state.monthlyBudget * 0.8) {
-      const reminderKey = `budget-${monthKey}-${spent >= state.monthlyBudget ? "100" : "80"}`;
+    if (spent >= state.monthlyBudget) {
+      const reminderKey = `budget-${monthKey}-100`;
       if (!hasReminderState("budget", reminderKey)) {
         reminders.push({
+          priority: 2,
           type: "budget",
           key: reminderKey,
-          title: spent >= state.monthlyBudget
-            ? "Бюджет месяца превышен"
-            : "Бюджет месяца почти исчерпан",
+          title: "Бюджет месяца превышен",
+          payload: null
+        });
+      }
+    } else if (spent >= state.monthlyBudget * 0.8) {
+      const reminderKey = `budget-${monthKey}-80`;
+      if (!hasReminderState("budget", reminderKey)) {
+        reminders.push({
+          priority: 3,
+          type: "budget",
+          key: reminderKey,
+          title: "Бюджет месяца почти исчерпан",
           payload: null
         });
       }
     }
   }
 
+  // 3. задачи
   state.planner.filter(task => !task.is_done).forEach(task => {
     const reminderKey = `task-${task.id}`;
     if (hasReminderState("task", reminderKey)) return;
 
-    reminders.push({
-      type: "task",
-      key: reminderKey,
-      title: `Задача: ${task.title}`,
-      payload: task
-    });
+    let show = false;
+    if (!task.due_date) show = true;
+    else {
+      const due = new Date(task.due_date);
+      const diffDays = Math.floor((due - today) / (1000 * 60 * 60 * 24));
+
+      if (task.period_type === "day" && diffDays <= 0) show = true;
+      if (task.period_type === "week" && diffDays <= 2) show = true;
+      if (task.period_type === "month" && diffDays <= 5) show = true;
+    }
+
+    if (show) {
+      reminders.push({
+        priority: 2,
+        type: "task",
+        key: reminderKey,
+        title: `Задача: ${task.title}`,
+        payload: task
+      });
+    }
   });
 
+  // 4. привычки
   state.habits.forEach(habit => {
     const doneCount = getHabitProgress(habit);
     if (doneCount >= habit.target_count) return;
@@ -998,15 +1024,39 @@ function buildReminderCards() {
     const reminderKey = `habit-${habit.id}-${getTodayDateString()}`;
     if (hasReminderState("habit", reminderKey)) return;
 
-    reminders.push({
-      type: "habit",
-      key: reminderKey,
-      title: `Привычка: ${habit.title} (${doneCount}/${habit.target_count})`,
-      payload: habit
-    });
+    let shouldShow = false;
+
+    if (habit.period_type === "day") {
+      shouldShow = doneCount < habit.target_count;
+    }
+
+    if (habit.period_type === "week") {
+      const dayOfWeek = today.getDay() === 0 ? 7 : today.getDay();
+      const expected = Math.floor((habit.target_count / 7) * dayOfWeek);
+      shouldShow = doneCount < expected;
+    }
+
+    if (habit.period_type === "month") {
+      const dayOfMonth = today.getDate();
+      const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+      const expected = Math.floor((habit.target_count / daysInMonth) * dayOfMonth);
+      shouldShow = doneCount < expected;
+    }
+
+    if (shouldShow) {
+      reminders.push({
+        priority: 4,
+        type: "habit",
+        key: reminderKey,
+        title: `Привычка: ${habit.title} (${doneCount}/${habit.target_count})`,
+        payload: habit
+      });
+    }
   });
 
-  return reminders.slice(0, 8);
+  return reminders
+    .sort((a, b) => a.priority - b.priority)
+    .slice(0, 5);
 }
 
 function renderReminders() {
@@ -1357,6 +1407,22 @@ async function saveRecurringPayment() {
 }
 
 async function applyRecurringPayment(item) {
+  const monthKey = getMonthKey();
+
+  const { error: logError } = await supabaseClient
+    .from("reminder_states")
+    .insert({
+      telegram_id: state.telegramId,
+      reminder_type: "payment_log",
+      reminder_key: `payment-${item.id}-${monthKey}`,
+      action_type: "done",
+      action_date: getTodayDateString()
+    });
+
+  if (logError) {
+    console.error(logError);
+  }
+
   const { error } = await supabaseClient
     .from("finance_records")
     .insert({

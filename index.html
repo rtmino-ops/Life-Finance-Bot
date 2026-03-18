@@ -10,13 +10,17 @@
 </head>
 <body>
   <div class="app">
-    <header class="topbar">
-      <div>
-        <h1>Life Finance</h1>
-        <p id="userInfo">Загрузка пользователя...</p>
+    <header class="topbar glass">
+      <div class="brand">
+        <div class="logo-dot">₿</div>
+        <div>
+          <h1>moneylive</h1>
+          <p id="userInfo">Загрузка пользователя...</p>
+        </div>
       </div>
-      <div class="summary-box">
-        <div>Баланс: <strong id="balanceValue">0</strong></div>
+      <div class="balance-box">
+        <span>Баланс</span>
+        <strong id="balanceValue">0</strong>
       </div>
     </header>
 
@@ -31,19 +35,16 @@
     <main>
       <!-- HOME -->
       <section class="tab-content active" id="home">
-        <div class="card">
+        <div class="card glass">
           <h2>Быстрые действия</h2>
-          <div class="grid">
-            <button id="openIncomeBtn">+ Доход</button>
-            <button id="openExpenseBtn">+ Расход</button>
-            <button id="openFoodBtn">+ Еда</button>
-            <button id="openSportBtn">+ Спорт</button>
+          <div class="action-grid">
+            <button class="action-btn blue" id="openIncomeBtn">+ Доход</button>
+            <button class="action-btn red" id="openExpenseBtn">+ Расход</button>
+            <button class="action-btn green" id="openFoodBtn">+ Еда</button>
+            <button class="action-btn orange" id="openSportBtn">+ Спорт</button>
           </div>
-        </div>
 
-        <div class="card">
-          <h2>Сводка</h2>
-          <div class="summary-grid">
+          <div class="summary-grid top-summary-grid">
             <div class="summary-item income-box">
               <span>Доходы</span>
               <strong id="incomeValue">0</strong>
@@ -52,23 +53,33 @@
               <span>Расходы</span>
               <strong id="expenseValue">0</strong>
             </div>
-            <div class="summary-item">
-              <span>Калории сегодня</span>
-              <strong id="caloriesValue">0</strong>
+          </div>
+        </div>
+
+        <div class="card glass">
+          <h2>Сводка</h2>
+          <div class="summary-grid">
+            <div class="summary-item neutral-box">
+              <span>Доходы</span>
+              <strong id="incomeValueDuplicate">0</strong>
             </div>
-            <div class="summary-item">
+            <div class="summary-item neutral-box">
               <span>Тренировки</span>
               <strong id="sportCountValue">0</strong>
+            </div>
+            <div class="summary-item neutral-box">
+              <span>Калории сегодня</span>
+              <strong id="caloriesValue">0</strong>
             </div>
           </div>
         </div>
 
-        <div class="card">
+        <div class="card glass">
           <h2>Напоминания</h2>
           <div id="remindersList">Пока нет напоминаний</div>
         </div>
 
-        <div class="card">
+        <div class="card glass">
           <div class="row-between">
             <h2>Цели накоплений</h2>
             <button id="openGoalBtn">Добавить цель</button>
@@ -79,17 +90,17 @@
 
       <!-- FINANCE -->
       <section class="tab-content" id="finance">
-        <div class="card">
+        <div class="card glass">
           <h2>Доходы vs Расходы</h2>
           <div id="summaryVisualChart"></div>
         </div>
 
-        <div class="card">
+        <div class="card glass">
           <h2>Доходы по категориям</h2>
           <div id="incomeCategoryChart">Нет данных</div>
         </div>
 
-        <div class="card">
+        <div class="card glass">
           <h2>Расходы по категориям</h2>
           <div id="expenseCategoryChart">Нет данных</div>
         </div>
@@ -107,7 +118,7 @@
 
       <!-- FOOD -->
       <section class="tab-content" id="food">
-        <div class="card">
+        <div class="card glass">
           <div class="row-between">
             <h2>Питание</h2>
             <button id="foodAddBtn">Добавить</button>
@@ -118,7 +129,7 @@
 
       <!-- SPORT -->
       <section class="tab-content" id="sport">
-        <div class="card">
+        <div class="card glass">
           <div class="row-between">
             <h2>Спорт</h2>
             <button id="sportAddBtn">Добавить</button>
@@ -129,7 +140,7 @@
 
       <!-- PLANNER -->
       <section class="tab-content" id="planner">
-        <div class="card">
+        <div class="card glass">
           <div class="row-between">
             <h2>Задачи</h2>
             <button id="openPlannerBtn">Добавить задачу</button>
@@ -137,12 +148,12 @@
           <div id="plannerList">Пока нет задач</div>
         </div>
 
-        <div class="card">
+        <div class="card glass">
           <h2>История задач</h2>
           <div id="plannerHistoryList">Пока нет выполненных задач</div>
         </div>
 
-        <div class="card">
+        <div class="card glass">
           <div class="row-between">
             <h2>Привычки</h2>
             <button id="openHabitBtn">Добавить привычку</button>
@@ -160,19 +171,14 @@
         <h3 id="financeModalTitle">Новая операция</h3>
         <button class="close-btn" data-close="financeModal">✕</button>
       </div>
-
       <input type="hidden" id="financeType" />
       <input type="hidden" id="editingFinanceId" />
-
       <label>Сумма</label>
       <input type="number" id="financeAmount" placeholder="Введите сумму" />
-
       <label>Категория</label>
       <select id="financeCategory"></select>
-
       <label>Комментарий</label>
       <input type="text" id="financeComment" placeholder="Комментарий" />
-
       <button id="saveFinanceBtn">Сохранить</button>
     </div>
   </div>
@@ -184,7 +190,6 @@
         <h3>Добавить прием пищи</h3>
         <button class="close-btn" data-close="foodModal">✕</button>
       </div>
-
       <label>Тип приема пищи</label>
       <select id="foodType">
         <option value="Завтрак">Завтрак</option>
@@ -192,13 +197,10 @@
         <option value="Ужин">Ужин</option>
         <option value="Перекус">Перекус</option>
       </select>
-
       <label>Описание</label>
       <input type="text" id="foodName" placeholder="Например: овсянка, яблоко" />
-
       <label>Калории</label>
       <input type="number" id="foodCalories" placeholder="Калории" />
-
       <button id="saveFoodBtn">Сохранить</button>
     </div>
   </div>
@@ -210,13 +212,10 @@
         <h3>Добавить тренировку</h3>
         <button class="close-btn" data-close="sportModal">✕</button>
       </div>
-
       <label>Тип активности</label>
       <input type="text" id="sportType" placeholder="Например: отжимания, бег" />
-
       <label>Количество / длительность</label>
       <input type="text" id="sportValue" placeholder="Например: 30, 20 мин, 5 км" />
-
       <button id="saveSportBtn">Сохранить</button>
     </div>
   </div>
@@ -267,7 +266,7 @@
           <span>Расход</span>
           <strong id="periodExpenseValue">0</strong>
         </div>
-        <div class="summary-item">
+        <div class="summary-item neutral-box">
           <span>Баланс</span>
           <strong id="periodBalanceValue">0</strong>
         </div>
@@ -282,7 +281,6 @@
         <h3>Бюджет месяца</h3>
         <button class="close-btn" data-close="budgetModal">✕</button>
       </div>
-
       <label>Общий бюджет на месяц</label>
       <input type="number" id="monthlyBudgetInput" placeholder="Например 50000" />
       <button id="saveMonthlyBudgetBtn">Сохранить бюджет</button>
@@ -368,7 +366,7 @@
     </div>
   </div>
 
-  <!-- PLANNER TASK MODAL -->
+  <!-- PLANNER MODAL -->
   <div class="modal hidden" id="plannerModal">
     <div class="modal-content">
       <div class="modal-header">
