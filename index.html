@@ -2,8 +2,10 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Life Finance</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="theme-color" content="#eef4ff" />
+  <title>MoneyLive</title>
   <link rel="stylesheet" href="style.css" />
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -14,27 +16,35 @@
       <div class="brand">
         <div class="logo-dot">₿</div>
         <div>
-          <h1>moneylive</h1>
-          <p id="userInfo">Загрузка пользователя...</p>
+          <h1>MoneyLive</h1>
+          <p id="userInfo">Загрузка...</p>
         </div>
       </div>
       <div class="balance-box">
         <span>Баланс</span>
-        <strong id="balanceValue">0</strong>
+        <strong id="balanceValue">0 ₽</strong>
       </div>
     </header>
 
     <nav class="tabs">
-      <button class="tab active" data-tab="home">Главная</button>
-      <button class="tab" data-tab="finance">Финансы</button>
-      <button class="tab" data-tab="food">Питание</button>
-      <button class="tab" data-tab="sport">Спорт</button>
-      <button class="tab" data-tab="planner">Планер</button>
+      <button class="tab active" data-tab="home">🏠</button>
+      <button class="tab" data-tab="finance">💰</button>
+      <button class="tab" data-tab="food">🍽</button>
+      <button class="tab" data-tab="sport">💪</button>
+      <button class="tab" data-tab="planner">📋</button>
     </nav>
 
     <main>
       <!-- HOME -->
       <section class="tab-content active" id="home">
+        <!-- Period selector -->
+        <div class="home-period-selector">
+          <button class="home-period-btn active" data-home-period="today">Сегодня</button>
+          <button class="home-period-btn" data-home-period="week">Неделя</button>
+          <button class="home-period-btn" data-home-period="month">Месяц</button>
+          <button class="home-period-btn" data-home-period="all">Всё время</button>
+        </div>
+
         <div class="card glass">
           <h2>Быстрые действия</h2>
           <div class="action-grid">
@@ -44,14 +54,14 @@
             <button class="action-btn orange" id="openSportBtn">+ Спорт</button>
           </div>
 
-          <div class="summary-grid top-summary-grid">
+          <div class="summary-grid">
             <div class="summary-item income-box">
               <span>Доходы</span>
-              <strong id="incomeValue">0</strong>
+              <strong id="incomeValue">0 ₽</strong>
             </div>
             <div class="summary-item expense-box">
               <span>Расходы</span>
-              <strong id="expenseValue">0</strong>
+              <strong id="expenseValue">0 ₽</strong>
             </div>
           </div>
         </div>
@@ -60,59 +70,55 @@
           <h2>Сводка</h2>
           <div class="summary-grid">
             <div class="summary-item neutral-box">
-              <span>Доходы</span>
-              <strong id="incomeValueDuplicate">0</strong>
-            </div>
-            <div class="summary-item neutral-box">
-              <span>Тренировки</span>
+              <span>🏋️ Тренировки</span>
               <strong id="sportCountValue">0</strong>
             </div>
             <div class="summary-item neutral-box">
-              <span>Калории сегодня</span>
+              <span>🔥 Калории сегодня</span>
               <strong id="caloriesValue">0</strong>
             </div>
           </div>
         </div>
 
         <div class="card glass">
-          <h2>Напоминания</h2>
-          <div id="remindersList">Пока нет напоминаний</div>
+          <h2>🔔 Напоминания</h2>
+          <div id="remindersList" class="empty-state">Нет напоминаний</div>
         </div>
 
         <div class="card glass">
           <div class="row-between">
-            <h2>Цели накоплений</h2>
-            <button id="openGoalBtn">Добавить цель</button>
+            <h2>🎯 Цели</h2>
+            <button id="openGoalBtn">+ Цель</button>
           </div>
-          <div id="goalsList">Пока нет целей</div>
+          <div id="goalsList" class="empty-state">Нет целей</div>
         </div>
       </section>
 
       <!-- FINANCE -->
       <section class="tab-content" id="finance">
         <div class="card glass">
-          <h2>Доходы vs Расходы</h2>
+          <h2>📊 Доходы vs Расходы</h2>
           <div id="summaryVisualChart"></div>
         </div>
 
         <div class="card glass">
-          <h2>Доходы по категориям</h2>
-          <div id="incomeCategoryChart">Нет данных</div>
+          <h2>📈 Доходы по категориям</h2>
+          <div id="incomeCategoryChart" class="empty-state">Нет данных</div>
         </div>
 
         <div class="card glass">
-          <h2>Расходы по категориям</h2>
-          <div id="expenseCategoryChart">Нет данных</div>
+          <h2>📉 Расходы по категориям</h2>
+          <div id="expenseCategoryChart" class="empty-state">Нет данных</div>
         </div>
 
         <div class="menu-grid">
-          <button id="openIncomeBtn2">Доход</button>
-          <button id="openExpenseBtn2">Расход</button>
-          <button id="openFinanceFiltersBtn">Фильтры</button>
-          <button id="openBudgetBtn">Бюджет</button>
-          <button id="openCategoryBudgetBtn">Лимиты</button>
-          <button id="openRecurringBtn">Платежи</button>
-          <button id="openFinanceHistoryBtn">История</button>
+          <button id="openIncomeBtn2">+ Доход</button>
+          <button id="openExpenseBtn2">+ Расход</button>
+          <button id="openFinanceFiltersBtn">🔍 Фильтры</button>
+          <button id="openBudgetBtn">💼 Бюджет</button>
+          <button id="openCategoryBudgetBtn">📊 Лимиты</button>
+          <button id="openRecurringBtn">🔄 Платежи</button>
+          <button id="openFinanceHistoryBtn">📜 История</button>
         </div>
       </section>
 
@@ -120,10 +126,10 @@
       <section class="tab-content" id="food">
         <div class="card glass">
           <div class="row-between">
-            <h2>Питание</h2>
-            <button id="foodAddBtn">Добавить</button>
+            <h2>🍽 Питание</h2>
+            <button id="foodAddBtn">+ Добавить</button>
           </div>
-          <div id="foodList">Пока нет записей</div>
+          <div id="foodList" class="empty-state">Нет записей</div>
         </div>
       </section>
 
@@ -131,10 +137,10 @@
       <section class="tab-content" id="sport">
         <div class="card glass">
           <div class="row-between">
-            <h2>Спорт</h2>
-            <button id="sportAddBtn">Добавить</button>
+            <h2>💪 Спорт</h2>
+            <button id="sportAddBtn">+ Добавить</button>
           </div>
-          <div id="sportList">Пока нет записей</div>
+          <div id="sportList" class="empty-state">Нет записей</div>
         </div>
       </section>
 
@@ -142,23 +148,23 @@
       <section class="tab-content" id="planner">
         <div class="card glass">
           <div class="row-between">
-            <h2>Задачи</h2>
-            <button id="openPlannerBtn">Добавить задачу</button>
+            <h2>📋 Задачи</h2>
+            <button id="openPlannerBtn">+ Задача</button>
           </div>
-          <div id="plannerList">Пока нет задач</div>
+          <div id="plannerList" class="empty-state">Нет задач</div>
         </div>
 
         <div class="card glass">
-          <h2>История задач</h2>
-          <div id="plannerHistoryList">Пока нет выполненных задач</div>
+          <h2>✅ История задач</h2>
+          <div id="plannerHistoryList" class="empty-state">Нет выполненных</div>
         </div>
 
         <div class="card glass">
           <div class="row-between">
-            <h2>Привычки</h2>
-            <button id="openHabitBtn">Добавить привычку</button>
+            <h2>🔁 Привычки</h2>
+            <button id="openHabitBtn">+ Привычка</button>
           </div>
-          <div id="habitsList">Пока нет привычек</div>
+          <div id="habitsList" class="empty-state">Нет привычек</div>
         </div>
       </section>
     </main>
@@ -174,12 +180,12 @@
       <input type="hidden" id="financeType" />
       <input type="hidden" id="editingFinanceId" />
       <label>Сумма</label>
-      <input type="number" id="financeAmount" placeholder="Введите сумму" />
+      <input type="number" id="financeAmount" placeholder="Введите сумму" inputmode="decimal" />
       <label>Категория</label>
       <select id="financeCategory"></select>
       <label>Комментарий</label>
-      <input type="text" id="financeComment" placeholder="Комментарий" />
-      <button id="saveFinanceBtn">Сохранить</button>
+      <input type="text" id="financeComment" placeholder="Комментарий (необязательно)" />
+      <button id="saveFinanceBtn">💾 Сохранить</button>
     </div>
   </div>
 
@@ -187,21 +193,21 @@
   <div class="modal hidden" id="foodModal">
     <div class="modal-content">
       <div class="modal-header">
-        <h3>Добавить прием пищи</h3>
+        <h3>🍽 Добавить прием пищи</h3>
         <button class="close-btn" data-close="foodModal">✕</button>
       </div>
       <label>Тип приема пищи</label>
       <select id="foodType">
-        <option value="Завтрак">Завтрак</option>
-        <option value="Обед">Обед</option>
-        <option value="Ужин">Ужин</option>
-        <option value="Перекус">Перекус</option>
+        <option value="Завтрак">🌅 Завтрак</option>
+        <option value="Обед">☀️ Обед</option>
+        <option value="Ужин">🌙 Ужин</option>
+        <option value="Перекус">🍎 Перекус</option>
       </select>
       <label>Описание</label>
       <input type="text" id="foodName" placeholder="Например: овсянка, яблоко" />
       <label>Калории</label>
-      <input type="number" id="foodCalories" placeholder="Калории" />
-      <button id="saveFoodBtn">Сохранить</button>
+      <input type="number" id="foodCalories" placeholder="Калории" inputmode="numeric" />
+      <button id="saveFoodBtn">💾 Сохранить</button>
     </div>
   </div>
 
@@ -209,14 +215,14 @@
   <div class="modal hidden" id="sportModal">
     <div class="modal-content">
       <div class="modal-header">
-        <h3>Добавить тренировку</h3>
+        <h3>💪 Добавить тренировку</h3>
         <button class="close-btn" data-close="sportModal">✕</button>
       </div>
       <label>Тип активности</label>
       <input type="text" id="sportType" placeholder="Например: отжимания, бег" />
       <label>Количество / длительность</label>
       <input type="text" id="sportValue" placeholder="Например: 30, 20 мин, 5 км" />
-      <button id="saveSportBtn">Сохранить</button>
+      <button id="saveSportBtn">💾 Сохранить</button>
     </div>
   </div>
 
@@ -224,52 +230,46 @@
   <div class="modal hidden" id="financeFiltersModal">
     <div class="modal-content">
       <div class="modal-header">
-        <h3>Фильтры и аналитика</h3>
+        <h3>🔍 Фильтры</h3>
         <button class="close-btn" data-close="financeFiltersModal">✕</button>
       </div>
-
       <div class="grid">
         <button class="filter-btn active" data-filter="all">Все</button>
         <button class="filter-btn" data-filter="income">Доходы</button>
         <button class="filter-btn" data-filter="expense">Расходы</button>
       </div>
-
-      <div class="period-grid">
+      <div class="period-grid" style="margin-top:12px;">
         <button class="period-btn active" data-period="today">Сегодня</button>
         <button class="period-btn" data-period="7">7 дней</button>
         <button class="period-btn" data-period="30">30 дней</button>
         <button class="period-btn" data-period="custom">Период</button>
       </div>
-
       <div id="customPeriodBox" class="hidden custom-period-box">
         <label>Дата от</label>
         <input type="date" id="dateFrom" />
         <label>Дата до</label>
         <input type="date" id="dateTo" />
-        <button id="applyCustomPeriodBtn">Применить период</button>
+        <button id="applyCustomPeriodBtn">Применить</button>
       </div>
-
-      <label>Поиск</label>
-      <input type="text" id="searchInput" placeholder="Поиск по комментарию или категории" />
-
+      <label style="margin-top:12px;">Поиск</label>
+      <input type="text" id="searchInput" placeholder="Поиск по комментарию" />
       <label>Категория</label>
       <select id="categoryFilter">
         <option value="all">Все категории</option>
       </select>
-
-      <div class="summary-grid">
+      <div class="summary-grid" style="margin-top:12px;">
         <div class="summary-item income-box">
           <span>Доход</span>
-          <strong id="periodIncomeValue">0</strong>
+          <strong id="periodIncomeValue">0 ₽</strong>
         </div>
         <div class="summary-item expense-box">
           <span>Расход</span>
-          <strong id="periodExpenseValue">0</strong>
+          <strong id="periodExpenseValue">0 ₽</strong>
         </div>
-        <div class="summary-item neutral-box">
-          <span>Баланс</span>
-          <strong id="periodBalanceValue">0</strong>
-        </div>
+      </div>
+      <div class="summary-item neutral-box" style="margin-top:10px;">
+        <span>Баланс</span>
+        <strong id="periodBalanceValue">0 ₽</strong>
       </div>
     </div>
   </div>
@@ -278,22 +278,20 @@
   <div class="modal hidden" id="budgetModal">
     <div class="modal-content">
       <div class="modal-header">
-        <h3>Бюджет месяца</h3>
+        <h3>💼 Бюджет месяца</h3>
         <button class="close-btn" data-close="budgetModal">✕</button>
       </div>
       <label>Общий бюджет на месяц</label>
-      <input type="number" id="monthlyBudgetInput" placeholder="Например 50000" />
-      <button id="saveMonthlyBudgetBtn">Сохранить бюджет</button>
-
+      <input type="number" id="monthlyBudgetInput" placeholder="Например 50000" inputmode="numeric" />
+      <button id="saveMonthlyBudgetBtn">💾 Сохранить бюджет</button>
       <div class="budget-box">
-        <p>Лимит: <strong id="monthlyBudgetValue">0</strong></p>
-        <p>Потрачено: <strong id="monthlySpentValue">0</strong></p>
-        <p>Осталось: <strong id="monthlyLeftValue">0</strong></p>
+        <p>Лимит: <strong id="monthlyBudgetValue">0 ₽</strong></p>
+        <p>Потрачено: <strong id="monthlySpentValue">0 ₽</strong></p>
+        <p>Осталось: <strong id="monthlyLeftValue">0 ₽</strong></p>
         <div class="bar-bg">
           <div id="monthlyBudgetBar" class="bar-fill"></div>
         </div>
       </div>
-
       <div id="budgetWarning" class="warning-box hidden"></div>
     </div>
   </div>
@@ -302,19 +300,15 @@
   <div class="modal hidden" id="categoryBudgetModal">
     <div class="modal-content">
       <div class="modal-header">
-        <h3>Лимиты по категориям</h3>
+        <h3>📊 Лимиты по категориям</h3>
         <button class="close-btn" data-close="categoryBudgetModal">✕</button>
       </div>
-
       <label>Категория</label>
       <select id="categoryBudgetCategory"></select>
-
       <label>Лимит</label>
-      <input type="number" id="categoryBudgetAmount" placeholder="Например 10000" />
-
-      <button id="saveCategoryBudgetBtn">Сохранить лимит</button>
-
-      <div id="categoryBudgetList">Лимиты пока не заданы</div>
+      <input type="number" id="categoryBudgetAmount" placeholder="Например 10000" inputmode="numeric" />
+      <button id="saveCategoryBudgetBtn">💾 Сохранить лимит</button>
+      <div id="categoryBudgetList" class="empty-state" style="margin-top:12px;">Лимиты не заданы</div>
     </div>
   </div>
 
@@ -322,29 +316,22 @@
   <div class="modal hidden" id="recurringModal">
     <div class="modal-content">
       <div class="modal-header">
-        <h3>Регулярные платежи</h3>
+        <h3>🔄 Регулярные платежи</h3>
         <button class="close-btn" data-close="recurringModal">✕</button>
       </div>
-
       <label>Название</label>
       <input type="text" id="recurringTitle" placeholder="Например: аренда" />
-
       <label>Сумма</label>
-      <input type="number" id="recurringAmount" placeholder="Сумма" />
-
+      <input type="number" id="recurringAmount" placeholder="Сумма" inputmode="numeric" />
       <label>Категория</label>
       <select id="recurringCategory"></select>
-
       <label>День месяца</label>
-      <input type="number" id="recurringDay" min="1" max="31" placeholder="Например 5" />
-
+      <input type="number" id="recurringDay" min="1" max="31" placeholder="Например 5" inputmode="numeric" />
       <label>Комментарий</label>
       <input type="text" id="recurringComment" placeholder="Комментарий" />
-
-      <button id="saveRecurringBtn">Сохранить</button>
-
-      <hr />
-      <div id="recurringList">Пока нет регулярных платежей</div>
+      <button id="saveRecurringBtn">💾 Сохранить</button>
+      <hr style="margin:16px 0; border:none; border-top:1px solid #e5e7eb;" />
+      <div id="recurringList" class="empty-state">Нет регулярных платежей</div>
     </div>
   </div>
 
@@ -352,17 +339,29 @@
   <div class="modal hidden" id="goalModal">
     <div class="modal-content">
       <div class="modal-header">
-        <h3>Цель накоплений</h3>
+        <h3>🎯 Цель накоплений</h3>
         <button class="close-btn" data-close="goalModal">✕</button>
       </div>
-
       <label>Название цели</label>
       <input type="text" id="goalTitle" placeholder="Например: отпуск, ноутбук" />
-
       <label>Сумма цели</label>
-      <input type="number" id="goalTargetAmount" placeholder="Например 100000" />
+      <input type="number" id="goalTargetAmount" placeholder="Например 100000" inputmode="numeric" />
+      <button id="saveGoalBtn">💾 Сохранить</button>
+    </div>
+  </div>
 
-      <button id="saveGoalBtn">Сохранить</button>
+  <!-- GOAL DEPOSIT MODAL -->
+  <div class="modal hidden" id="goalDepositModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>💰 Пополнить цель</h3>
+        <button class="close-btn" data-close="goalDepositModal">✕</button>
+      </div>
+      <p id="goalDepositInfo"></p>
+      <input type="hidden" id="goalDepositId" />
+      <label>Сумма пополнения</label>
+      <input type="number" id="goalDepositAmount" placeholder="Сумма" inputmode="numeric" />
+      <button id="saveGoalDepositBtn">💾 Внести</button>
     </div>
   </div>
 
@@ -370,24 +369,20 @@
   <div class="modal hidden" id="plannerModal">
     <div class="modal-content">
       <div class="modal-header">
-        <h3>Новая задача</h3>
+        <h3>📋 Новая задача</h3>
         <button class="close-btn" data-close="plannerModal">✕</button>
       </div>
-
       <label>Название задачи</label>
       <input type="text" id="plannerTitle" placeholder="Например: повесить полку" />
-
       <label>Тип периода</label>
       <select id="plannerPeriod">
         <option value="day">День</option>
         <option value="week">Неделя</option>
         <option value="month">Месяц</option>
       </select>
-
       <label>Дата / срок</label>
       <input type="date" id="plannerDate" />
-
-      <button id="savePlannerBtn">Сохранить</button>
+      <button id="savePlannerBtn">💾 Сохранить</button>
     </div>
   </div>
 
@@ -395,24 +390,20 @@
   <div class="modal hidden" id="habitModal">
     <div class="modal-content">
       <div class="modal-header">
-        <h3>Новая привычка</h3>
+        <h3>🔁 Новая привычка</h3>
         <button class="close-btn" data-close="habitModal">✕</button>
       </div>
-
       <label>Название привычки</label>
       <input type="text" id="habitTitle" placeholder="Например: отжимания" />
-
       <label>Тип периода</label>
       <select id="habitPeriod">
         <option value="day">День</option>
         <option value="week">Неделя</option>
         <option value="month">Месяц</option>
       </select>
-
-      <label>Цель</label>
-      <input type="number" id="habitTarget" placeholder="Например 20" />
-
-      <button id="saveHabitBtn">Сохранить</button>
+      <label>Цель (раз)</label>
+      <input type="number" id="habitTarget" placeholder="Например 20" inputmode="numeric" />
+      <button id="saveHabitBtn">💾 Сохранить</button>
     </div>
   </div>
 
@@ -420,10 +411,10 @@
   <div class="modal hidden" id="financeHistoryModal">
     <div class="modal-content">
       <div class="modal-header">
-        <h3>История операций</h3>
+        <h3>📜 История операций</h3>
         <button class="close-btn" data-close="financeHistoryModal">✕</button>
       </div>
-      <div id="operationsList">Пока нет операций</div>
+      <div id="operationsList" class="empty-state">Нет операций</div>
     </div>
   </div>
 
