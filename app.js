@@ -51,7 +51,7 @@ const state = {
   reminderStates: [],
   financeFilter: "all",
   periodFilter: "today",
-  homePeriod: "today",
+  homePeriod: localStorage.getItem("ml_homePeriod") || "all",
   customDateFrom: null,
   customDateTo: null,
   searchQuery: "",
@@ -1352,10 +1352,16 @@ document.querySelectorAll(".tab").forEach(tab => {
 
 // Home period selector
 document.querySelectorAll(".home-period-btn").forEach(btn => {
+  // Восстанавливаем активную кнопку из localStorage при загрузке
+  if (btn.dataset.homePeriod === state.homePeriod) {
+    document.querySelectorAll(".home-period-btn").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+  }
   btn.addEventListener("click", () => {
     document.querySelectorAll(".home-period-btn").forEach(b => b.classList.remove("active"));
     btn.classList.add("active");
     state.homePeriod = btn.dataset.homePeriod;
+    localStorage.setItem("ml_homePeriod", state.homePeriod);
     renderAll();
   });
 });
