@@ -17,6 +17,15 @@ if (!supabaseKey) throw new Error("SUPABASE_ANON_KEY is not set");
 const bot = new TelegramBot(token, { polling: true });
 const supabase = createClient(supabaseUrl, supabaseKey);
 
+// ===== CATEGORY MAP =====
+const categoryLabels = {
+  salary: "Зарплата", parttime: "Подработка", gift: "Подарки",
+  investment: "Инвестиции", other_income: "Прочее",
+  food: "Еда", transport: "Транспорт", housing: "Жильё",
+  fun: "Развлечения", health: "Здоровье", shopping: "Покупки",
+  sport: "Спорт", other_expense: "Прочее"
+};
+
 // ===== HELPERS =====
 function getMonthKey() {
   const now = new Date();
@@ -149,7 +158,7 @@ bot.onText(/\/stats/, async (msg) => {
     const topCategories = Object.entries(expenseByCategory)
       .sort(([, a], [, b]) => b - a)
       .slice(0, 5)
-      .map(([cat, amount]) => `  • ${cat}: ${formatMoney(amount)}`)
+      .map(([cat, amount]) => `  • ${categoryLabels[cat] || cat}: ${formatMoney(amount)}`)
       .join("\n");
 
     // Спорт
@@ -187,7 +196,7 @@ bot.onText(/\/stats/, async (msg) => {
 
     text += `\n\n📝 Операций за месяц: ${monthRecords.length}`;
 
-    await bot.sendMessage(msg.chat.id, text, { parse_mode: "Markdown" });
+    await bot.sendMessage(msg.chat.id, text);
   } catch (error) {
     console.error("stats error:", error.message);
     await bot.sendMessage(msg.chat.id, "❌ Ошибка получения статистики");
@@ -432,7 +441,17 @@ async function buildReminderText(userId) {
       .eq("is_active", true);
 
     if (recurring) {
+      // Грузим логи уже оплаченных в этом месяце
+      const { data: paidLogs } = await supabase
+        .from("recurring_payment_logs")
+        .select("recurring_payment_id")
+        .eq("telegram_id", userId)
+        .eq("month_key", monthKey);
+      const paidIds = new Set((paidLogs || []).map(l => Number(l.recurring_payment_id)));
+
       recurring.forEach(item => {
+        // Не напоминаем если уже оплачено в этом месяце
+        if (paidIds.has(Number(item.id))) return;
         if (item.day_of_month === today) {
           messages.push(`💳 *Сегодня:* ${item.title} — ${formatMoney(item.amount)}`);
         } else if (item.day_of_month > today && item.day_of_month - today <= 3) {

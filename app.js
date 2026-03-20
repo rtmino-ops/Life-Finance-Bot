@@ -384,10 +384,12 @@ async function loadHabitLogs() {
 }
 
 async function loadReminderStates() {
-  const today = getTodayDateString();
+  // Грузим за весь текущий месяц — иначе платёж оплаченный вчера снова появляется
+  const now = new Date();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
   const { data } = await supabaseClient
     .from("reminder_states").select("*").eq("telegram_id", state.telegramId)
-    .eq("action_date", today);
+    .gte("action_date", monthStart);
   state.reminderStates = data || [];
 }
 
@@ -1009,6 +1011,13 @@ function buildReminderCards() {
   state.recurring.forEach(item => {
     const key = `payment-${item.id}-${mk}`;
     if (hasReminderState("payment", key)) return;
+    // Скрываем если уже есть запись в finance_records с этим платежом в этом месяце
+    const alreadyPaid = state.operations.some(op => {
+      const d = new Date(op.created_at);
+      const opMk = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;
+      return op.comment === `🔄 ${item.title}` && op.record_type === "expense" && opMk === mk;
+    });
+    if (alreadyPaid) return;
     if (item.day_of_month === todayDate || (item.day_of_month > todayDate && item.day_of_month - todayDate <= 3)) {
       reminders.push({
         priority: 1, type: "payment", key,
@@ -1292,6 +1301,13 @@ async function saveRecurringPayment() {
 }
 
 async function applyRecurringPayment(item) {
+  const mk = getMonthKey();
+  // Проверяем — не оплачено ли уже в этом месяце
+  const { data: existing } = await supabaseClient.from("recurring_payment_logs")
+    .select("id").eq("telegram_id", state.telegramId)
+    .eq("recurring_payment_id", item.id).eq("month_key", mk).maybeSingle();
+  if (existing) { showToast("Уже оплачено в этом месяце ✅", "warning"); return; }
+
   const { error } = await supabaseClient.from("finance_records").insert({
     telegram_id: state.telegramId,
     record_type: "expense",
@@ -1300,8 +1316,16 @@ async function applyRecurringPayment(item) {
     comment: `🔄 ${item.title}`
   });
   if (error) { showToast("Ошибка", "error"); return; }
+
+  // Записываем в лог оплаченных платежей
+  await supabaseClient.from("recurring_payment_logs").insert({
+    telegram_id: state.telegramId,
+    recurring_payment_id: item.id,
+    month_key: mk
+  });
+
   await loadFinance();
-  showToast(`Оплачено: ${item.title}`);
+  showToast(`Оплачено: ${item.title} ✅`);
   renderAll();
 }
 
