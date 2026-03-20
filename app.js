@@ -31,15 +31,8 @@ const categoryMap = {};
 });
 
 // ===== PIE CHART COLORS =====
-const PIE_COLORS_INCOME = [
-  "#10b981","#34d399","#6ee7b7","#a7f3d0",
-  "#059669","#047857"
-];
-const PIE_COLORS_EXPENSE = [
-  "#ef4444","#f97316","#f59e0b","#eab308",
-  "#ec4899","#8b5cf6","#06b6d4","#64748b"
-];
-
+const PIE_COLORS_INCOME = ["#10b981","#34d399","#6ee7b7","#a7f3d0","#059669","#047857"];
+const PIE_COLORS_EXPENSE = ["#ef4444","#f97316","#f59e0b","#eab308","#ec4899","#8b5cf6","#06b6d4","#64748b"];
 
 // ===== DARK THEME =====
 function initDarkTheme() {
@@ -70,8 +63,8 @@ const state = {
   habitLogs: [],
   reminderStates: [],
   financeFilter: "all",
-  periodFilter: "today",
-  homePeriod: "today",
+  periodFilter: localStorage.getItem("ml_periodFilter") || "30",
+  homePeriod: localStorage.getItem("ml_homePeriod") || "all",
   customDateFrom: null,
   customDateTo: null,
   searchQuery: "",
@@ -640,68 +633,100 @@ function renderVisualCategoryChart(el, grouped, type) {
 }
 
 
-// ===== PIE CHART RENDERER =====
+// ===== PIE CHART — DONUT (categories) =====
 function renderPieChart(el, grouped, type) {
   if (!el) return;
   const entries = Object.entries(grouped).sort(([,a],[,b]) => b - a);
   if (!entries.length) { el.innerHTML = '<div class="empty-state">Нет данных</div>'; return; }
-
-  const total = entries.reduce((s, [, v]) => s + v, 0);
+  const total = entries.reduce((s,[,v]) => s + v, 0);
   const colors = type === "income" ? PIE_COLORS_INCOME : PIE_COLORS_EXPENSE;
-  const size = 180;
-  const cx = size / 2, cy = size / 2, r = 70, innerR = 42;
-
-  // Build SVG pie slices
-  let startAngle = -Math.PI / 2;
+  const size = 180, cx = 90, cy = 90, r = 72, ir = 44;
+  let angle = -Math.PI / 2;
   const slices = entries.map(([cat, amount], i) => {
-    const angle = (amount / total) * 2 * Math.PI;
-    const endAngle = startAngle + angle;
-    const x1 = cx + r * Math.cos(startAngle);
-    const y1 = cy + r * Math.sin(startAngle);
-    const x2 = cx + r * Math.cos(endAngle);
-    const y2 = cy + r * Math.sin(endAngle);
-    const ix1 = cx + innerR * Math.cos(startAngle);
-    const iy1 = cy + innerR * Math.sin(startAngle);
-    const ix2 = cx + innerR * Math.cos(endAngle);
-    const iy2 = cy + innerR * Math.sin(endAngle);
-    const largeArc = angle > Math.PI ? 1 : 0;
-    const color = colors[i % colors.length];
-    const path = `M ${ix1} ${iy1} L ${x1} ${y1} A ${r} ${r} 0 ${largeArc} 1 ${x2} ${y2} L ${ix2} ${iy2} A ${innerR} ${innerR} 0 ${largeArc} 0 ${ix1} ${iy1} Z`;
-    const result = { cat, amount, angle, color, path };
-    startAngle = endAngle;
-    return result;
+    const a = (amount / total) * 2 * Math.PI;
+    const ea = angle + a;
+    const x1=cx+r*Math.cos(angle), y1=cy+r*Math.sin(angle);
+    const x2=cx+r*Math.cos(ea),   y2=cy+r*Math.sin(ea);
+    const ix1=cx+ir*Math.cos(angle),iy1=cy+ir*Math.sin(angle);
+    const ix2=cx+ir*Math.cos(ea),  iy2=cy+ir*Math.sin(ea);
+    const lg = a > Math.PI ? 1 : 0;
+    const path = `M${ix1} ${iy1} L${x1} ${y1} A${r} ${r} 0 ${lg} 1 ${x2} ${y2} L${ix2} ${iy2} A${ir} ${ir} 0 ${lg} 0 ${ix1} ${iy1}Z`;
+    const col = colors[i % colors.length];
+    angle = ea;
+    return { cat, amount, col, path };
   });
-
-  const svgSlices = slices.map(s => `<path d="${s.path}" fill="${s.color}" stroke="white" stroke-width="1.5" opacity="0.92"/>`).join("");
-
-  const legendItems = slices.map(s => {
-    const pct = Math.round((s.amount / total) * 100);
-    return `
-      <div class="pie-legend-item">
-        <div class="pie-legend-left">
-          <div class="pie-legend-dot" style="background:${s.color}"></div>
-          <span class="pie-legend-name">${categoryMap[s.cat] || s.cat}</span>
-        </div>
-        <div class="pie-legend-right">
-          <span class="pie-legend-amount">${formatMoney(s.amount)}</span>
-          <span class="pie-legend-pct">${pct}%</span>
-        </div>
-      </div>`;
-  }).join("");
-
-  el.innerHTML = `
-    <div class="pie-wrap">
-      <div class="pie-canvas-wrap">
-        <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
-          ${svgSlices}
-        </svg>
-        <div class="pie-center-label">
-          <span>${type === "income" ? "Доходы" : "Расходы"}</span>
-          <strong>${formatMoney(total)}</strong>
-        </div>
-      </div>
-      <div class="pie-legend">${legendItems}</div>
+  const svgPaths = slices.map(s=>`<path d="${s.path}" fill="${s.col}" stroke="white" stroke-width="1.5" opacity="0.93"/>`).join("");
+  const legend = slices.map(s=>{
+    const pct = Math.round((s.amount/total)*100);
+    return `<div class="pie-legend-item">
+      <div class="pie-legend-left"><div class="pie-legend-dot" style="background:${s.col}"></div><span class="pie-legend-name">${categoryMap[s.cat]||s.cat}</span></div>
+      <div class="pie-legend-right"><span class="pie-legend-amount">${formatMoney(s.amount)}</span><span class="pie-legend-pct">${pct}%</span></div>
     </div>`;
+  }).join("");
+  el.innerHTML = `<div class="pie-wrap">
+    <div class="pie-canvas-wrap">
+      <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">${svgPaths}</svg>
+      <div class="pie-center-label"><span>${type==="income"?"Доходы":"Расходы"}</span><strong>${formatMoney(total)}</strong></div>
+    </div>
+    <div class="pie-legend">${legend}</div>
+  </div>`;
+}
+
+// ===== PIE CHART — HALF DONUT (income vs expense) =====
+function renderSummaryPieChart(el, income, expense, budget) {
+  if (!el) return;
+  const total = income + expense;
+  if (total === 0) { el.innerHTML = '<div class="empty-state">Нет данных за период</div>'; return; }
+  const size = 180, cx = 90, cy = 90, r = 72, ir = 44;
+  // Full donut split income/expense
+  const incomeAngle = (income / total) * 2 * Math.PI;
+  const expenseAngle = (expense / total) * 2 * Math.PI;
+  let angle = -Math.PI / 2;
+  function slicePath(a, ea) {
+    const x1=cx+r*Math.cos(a),   y1=cy+r*Math.sin(a);
+    const x2=cx+r*Math.cos(ea),  y2=cy+r*Math.sin(ea);
+    const ix1=cx+ir*Math.cos(a), iy1=cy+ir*Math.sin(a);
+    const ix2=cx+ir*Math.cos(ea),iy2=cy+ir*Math.sin(ea);
+    const lg = (ea-a) > Math.PI ? 1 : 0;
+    return `M${ix1} ${iy1} L${x1} ${y1} A${r} ${r} 0 ${lg} 1 ${x2} ${y2} L${ix2} ${iy2} A${ir} ${ir} 0 ${lg} 0 ${ix1} ${iy1}Z`;
+  }
+  const incPath = slicePath(angle, angle + incomeAngle);
+  const expPath = slicePath(angle + incomeAngle, angle + incomeAngle + expenseAngle);
+  const balance = income - expense;
+  const balColor = balance >= 0 ? "#10b981" : "#ef4444";
+
+  // Budget bar
+  let budgetHtml = "";
+  if (budget > 0) {
+    const pct = Math.min(Math.round((expense / budget) * 100), 100);
+    const barColor = pct >= 100 ? "#ef4444" : pct >= 80 ? "#f59e0b" : "#10b981";
+    const warn = pct >= 100 ? "🚨 Бюджет превышен" : pct >= 80 ? "⚠️ 80%+ бюджета" : "";
+    budgetHtml = `<div class="summary-pie-budget">
+      <div class="summary-pie-budget-row">
+        <span>Бюджет</span><strong>${formatMoney(budget)}</strong>
+      </div>
+      <div class="bar-bg" style="margin:6px 0 2px"><div class="bar-fill" style="width:${pct}%;background:${barColor}"></div></div>
+      <div class="summary-pie-budget-row"><span style="color:${barColor};font-size:12px">${warn||"Потрачено "+pct+"%"}</span><span style="font-size:12px;color:#6b7280">Осталось ${formatMoney(budget-expense)}</span></div>
+    </div>`;
+  }
+
+  el.innerHTML = `<div class="summary-pie-wrap">
+    <div class="pie-canvas-wrap">
+      <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+        <path d="${incPath}" fill="#10b981" stroke="white" stroke-width="1.5" opacity="0.93"/>
+        <path d="${expPath}" fill="#ef4444" stroke="white" stroke-width="1.5" opacity="0.93"/>
+      </svg>
+      <div class="pie-center-label">
+        <span>Баланс</span>
+        <strong style="color:${balColor}">${formatMoney(balance)}</strong>
+      </div>
+    </div>
+    <div class="summary-pie-info">
+      <div class="summary-pie-row"><span class="summary-pie-dot" style="background:#10b981"></span><span>Доходы</span><strong>${formatMoney(income)}</strong></div>
+      <div class="summary-pie-row"><span class="summary-pie-dot" style="background:#ef4444"></span><span>Расходы</span><strong>${formatMoney(expense)}</strong></div>
+      ${budgetHtml}
+    </div>
+  </div>`;
 }
 
 function renderBudgetBlock() {
@@ -1089,7 +1114,7 @@ function renderAll() {
   renderFood();
   renderSport();
   renderPeriodAnalytics();
-  renderVisualSummaryChart();
+  renderSummaryPieChart(summaryVisualChartEl, state.income, state.expense, state.monthlyBudget);
   renderPieChart(incomeCategoryChartEl, getGroupedByCategory("income"), "income");
   renderPieChart(expenseCategoryChartEl, getGroupedByCategory("expense"), "expense");
   renderBudgetBlock();
@@ -1111,6 +1136,7 @@ function openFinanceModal(type) {
   financeCommentInput.value = "";
   fillFinanceCategories(type);
   openModal(financeModal);
+  setTimeout(() => financeAmountInput && financeAmountInput.focus(), 100);
 }
 
 function openEditFinanceModal(item) {
@@ -1427,21 +1453,54 @@ async function initApp() {
 
 // Tabs
 document.querySelectorAll(".tab").forEach(tab => {
+  const savedTab = localStorage.getItem("ml_activeTab") || "home";
+  if (tab.dataset.tab === savedTab) {
+    document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+    document.querySelectorAll(".tab-content").forEach(c => c.classList.remove("active"));
+    tab.classList.add("active");
+    const s = $(tab.dataset.tab);
+    if (s) s.classList.add("active");
+  }
   tab.addEventListener("click", () => {
     document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
     document.querySelectorAll(".tab-content").forEach(c => c.classList.remove("active"));
     tab.classList.add("active");
-    const section = $(tab.dataset.tab);
-    if (section) section.classList.add("active");
+    const s = $(tab.dataset.tab);
+    if (s) s.classList.add("active");
+    localStorage.setItem("ml_activeTab", tab.dataset.tab);
   });
 });
 
 // Home period selector
 document.querySelectorAll(".home-period-btn").forEach(btn => {
+  if (btn.dataset.homePeriod === state.homePeriod) {
+    document.querySelectorAll(".home-period-btn").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+  }
   btn.addEventListener("click", () => {
     document.querySelectorAll(".home-period-btn").forEach(b => b.classList.remove("active"));
     btn.classList.add("active");
     state.homePeriod = btn.dataset.homePeriod;
+    localStorage.setItem("ml_homePeriod", state.homePeriod);
+    renderAll();
+  });
+});
+
+
+// Finance period selector (на вкладке Финансы)
+document.querySelectorAll(".finance-period-btn").forEach(btn => {
+  if (btn.dataset.fp === state.periodFilter) {
+    document.querySelectorAll(".finance-period-btn").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+  }
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".finance-period-btn").forEach(b => b.classList.remove("active"));
+    // Синхронизируем с period-btn в фильтрах
+    document.querySelectorAll(".period-btn").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    state.periodFilter = btn.dataset.fp;
+    localStorage.setItem("ml_periodFilter", state.periodFilter);
+    if (customPeriodBoxEl) customPeriodBoxEl.classList.add("hidden");
     renderAll();
   });
 });
@@ -1473,10 +1532,15 @@ document.querySelectorAll(".filter-btn").forEach(btn => {
 
 // Period filters
 document.querySelectorAll(".period-btn").forEach(btn => {
+  if (btn.dataset.period === state.periodFilter) {
+    document.querySelectorAll(".period-btn").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+  }
   btn.addEventListener("click", () => {
     document.querySelectorAll(".period-btn").forEach(b => b.classList.remove("active"));
     btn.classList.add("active");
     state.periodFilter = btn.dataset.period;
+    localStorage.setItem("ml_periodFilter", state.periodFilter);
     if (customPeriodBoxEl) {
       state.periodFilter === "custom"
         ? customPeriodBoxEl.classList.remove("hidden")

@@ -96,6 +96,12 @@
 
       <!-- FINANCE -->
       <section class="tab-content" id="finance">
+        <div class="finance-period-selector">
+          <button class="finance-period-btn" data-fp="today">Сегодня</button>
+          <button class="finance-period-btn" data-fp="7">7 дней</button>
+          <button class="finance-period-btn active" data-fp="30">30 дней</button>
+          <button class="finance-period-btn" data-fp="all">Всё время</button>
+        </div>
         <div class="card glass">
           <h2>📊 Доходы vs Расходы</h2>
           <div id="summaryVisualChart"></div>
@@ -257,20 +263,7 @@
       <select id="categoryFilter">
         <option value="all">Все категории</option>
       </select>
-      <div class="summary-grid" style="margin-top:12px;">
-        <div class="summary-item income-box">
-          <span>Доход</span>
-          <strong id="periodIncomeValue">0 ₽</strong>
-        </div>
-        <div class="summary-item expense-box">
-          <span>Расход</span>
-          <strong id="periodExpenseValue">0 ₽</strong>
-        </div>
-      </div>
-      <div class="summary-item neutral-box" style="margin-top:10px;">
-        <span>Баланс</span>
-        <strong id="periodBalanceValue">0 ₽</strong>
-      </div>
+
     </div>
   </div>
 
