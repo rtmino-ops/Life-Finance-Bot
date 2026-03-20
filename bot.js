@@ -385,7 +385,7 @@ bot.onText(/\/reminders/, async (msg) => {
       return;
     }
 
-    await bot.sendMessage(msg.chat.id, text, { parse_mode: "Markdown" });
+    await bot.sendMessage(msg.chat.id, text);
   } catch (error) {
     console.error("reminders error:", error.message);
     await bot.sendMessage(msg.chat.id, "❌ Не удалось получить напоминания");
@@ -453,9 +453,9 @@ async function buildReminderText(userId) {
         // Не напоминаем если уже оплачено в этом месяце
         if (paidIds.has(Number(item.id))) return;
         if (item.day_of_month === today) {
-          messages.push(`💳 *Сегодня:* ${item.title} — ${formatMoney(item.amount)}`);
+          messages.push(`💳 Сегодня: ${item.title} — ${formatMoney(item.amount)}`);
         } else if (item.day_of_month > today && item.day_of_month - today <= 3) {
-          messages.push(`⏰ *Скоро:* ${item.title} (${item.day_of_month} числа) — ${formatMoney(item.amount)}`);
+          messages.push(`⏰ Скоро: ${item.title} (${item.day_of_month} числа) — ${formatMoney(item.amount)}`);
         }
       });
     }
@@ -484,9 +484,9 @@ async function buildReminderText(userId) {
       const totalBudget = Number(budget.total_budget);
 
       if (spent >= totalBudget) {
-        messages.push(`🚨 *Бюджет превышен!* (${formatMoney(spent)} / ${formatMoney(totalBudget)})`);
+        messages.push(`🚨 Бюджет превышен! (${formatMoney(spent)} / ${formatMoney(totalBudget)})`);
       } else if (spent >= totalBudget * 0.8) {
-        messages.push(`⚠️ *80%+ бюджета* (${formatMoney(spent)} / ${formatMoney(totalBudget)})`);
+        messages.push(`⚠️ 80%+ бюджета (${formatMoney(spent)} / ${formatMoney(totalBudget)})`);
       }
     }
   }
@@ -507,7 +507,7 @@ async function buildReminderText(userId) {
       });
 
       urgent.slice(0, 3).forEach(task => {
-        messages.push(`📋 *Срочно:* ${task.title}`);
+        messages.push(`📋 Срочно: ${task.title}`);
       });
 
       const upcoming = tasks.filter(task => {
@@ -550,7 +550,7 @@ async function buildReminderText(userId) {
 
   if (!messages.length) return null;
 
-  return `🔔 *Напоминания MoneyLive:*\n\n${messages.join("\n")}`;
+  return `🔔 Напоминания MoneyLive:\n\n${messages.join("\n")}`;
 }
 
 // ===== AUTO REMINDERS (каждые 4 часа) =====
@@ -579,8 +579,7 @@ async function sendAutoReminders() {
         if (text) {
           await bot.sendMessage(
             user.chat_id,
-            text + "\n\n_Авто-напоминание. /notify\\_off чтобы отключить_",
-            { parse_mode: "Markdown" }
+            text + "\n\n— /notify_off чтобы отключить напоминания"
           );
           sent++;
         }
