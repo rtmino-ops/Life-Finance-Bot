@@ -30,6 +30,26 @@ const categoryMap = {};
   categoryMap[item.value] = item.label;
 });
 
+// ===== PIE CHART COLORS =====
+const PIE_COLORS_INCOME = [
+  "#10b981","#34d399","#6ee7b7","#a7f3d0",
+  "#059669","#047857"
+];
+const PIE_COLORS_EXPENSE = [
+  "#ef4444","#f97316","#f59e0b","#eab308",
+  "#ec4899","#8b5cf6","#06b6d4","#64748b"
+];
+
+
+// ===== DARK THEME =====
+function initDarkTheme() {
+  const tgColorScheme = tg && tg.colorScheme;
+  const saved = localStorage.getItem("ml_theme");
+  const isDark = saved ? saved === "dark" : tgColorScheme === "dark";
+  if (isDark) document.body.classList.add("dark");
+}
+
+
 // ===== STATE =====
 const state = {
   telegramId: null,
@@ -51,7 +71,7 @@ const state = {
   reminderStates: [],
   financeFilter: "all",
   periodFilter: "today",
-  homePeriod: localStorage.getItem("ml_homePeriod") || "all",
+  homePeriod: "today",
   customDateFrom: null,
   customDateTo: null,
   searchQuery: "",
@@ -619,6 +639,71 @@ function renderVisualCategoryChart(el, grouped, type) {
   `).join("");
 }
 
+
+// ===== PIE CHART RENDERER =====
+function renderPieChart(el, grouped, type) {
+  if (!el) return;
+  const entries = Object.entries(grouped).sort(([,a],[,b]) => b - a);
+  if (!entries.length) { el.innerHTML = '<div class="empty-state">Нет данных</div>'; return; }
+
+  const total = entries.reduce((s, [, v]) => s + v, 0);
+  const colors = type === "income" ? PIE_COLORS_INCOME : PIE_COLORS_EXPENSE;
+  const size = 180;
+  const cx = size / 2, cy = size / 2, r = 70, innerR = 42;
+
+  // Build SVG pie slices
+  let startAngle = -Math.PI / 2;
+  const slices = entries.map(([cat, amount], i) => {
+    const angle = (amount / total) * 2 * Math.PI;
+    const endAngle = startAngle + angle;
+    const x1 = cx + r * Math.cos(startAngle);
+    const y1 = cy + r * Math.sin(startAngle);
+    const x2 = cx + r * Math.cos(endAngle);
+    const y2 = cy + r * Math.sin(endAngle);
+    const ix1 = cx + innerR * Math.cos(startAngle);
+    const iy1 = cy + innerR * Math.sin(startAngle);
+    const ix2 = cx + innerR * Math.cos(endAngle);
+    const iy2 = cy + innerR * Math.sin(endAngle);
+    const largeArc = angle > Math.PI ? 1 : 0;
+    const color = colors[i % colors.length];
+    const path = `M ${ix1} ${iy1} L ${x1} ${y1} A ${r} ${r} 0 ${largeArc} 1 ${x2} ${y2} L ${ix2} ${iy2} A ${innerR} ${innerR} 0 ${largeArc} 0 ${ix1} ${iy1} Z`;
+    const result = { cat, amount, angle, color, path };
+    startAngle = endAngle;
+    return result;
+  });
+
+  const svgSlices = slices.map(s => `<path d="${s.path}" fill="${s.color}" stroke="white" stroke-width="1.5" opacity="0.92"/>`).join("");
+
+  const legendItems = slices.map(s => {
+    const pct = Math.round((s.amount / total) * 100);
+    return `
+      <div class="pie-legend-item">
+        <div class="pie-legend-left">
+          <div class="pie-legend-dot" style="background:${s.color}"></div>
+          <span class="pie-legend-name">${categoryMap[s.cat] || s.cat}</span>
+        </div>
+        <div class="pie-legend-right">
+          <span class="pie-legend-amount">${formatMoney(s.amount)}</span>
+          <span class="pie-legend-pct">${pct}%</span>
+        </div>
+      </div>`;
+  }).join("");
+
+  el.innerHTML = `
+    <div class="pie-wrap">
+      <div class="pie-canvas-wrap">
+        <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+          ${svgSlices}
+        </svg>
+        <div class="pie-center-label">
+          <span>${type === "income" ? "Доходы" : "Расходы"}</span>
+          <strong>${formatMoney(total)}</strong>
+        </div>
+      </div>
+      <div class="pie-legend">${legendItems}</div>
+    </div>`;
+}
+
 function renderBudgetBlock() {
   if (!monthlyBudgetValueEl) return;
   const mk = getMonthKey();
@@ -1005,8 +1090,8 @@ function renderAll() {
   renderSport();
   renderPeriodAnalytics();
   renderVisualSummaryChart();
-  renderVisualCategoryChart(incomeCategoryChartEl, getGroupedByCategory("income"), "income");
-  renderVisualCategoryChart(expenseCategoryChartEl, getGroupedByCategory("expense"), "expense");
+  renderPieChart(incomeCategoryChartEl, getGroupedByCategory("income"), "income");
+  renderPieChart(expenseCategoryChartEl, getGroupedByCategory("expense"), "expense");
   renderBudgetBlock();
   renderCategoryBudgets();
   renderRecurring();
@@ -1308,6 +1393,7 @@ async function saveSport() {
 // ===== INIT APP =====
 async function initApp() {
   try {
+    initDarkTheme();
     initTelegramUser();
     fillCategoryFilter();
     fillCategoryBudgetSelect();
@@ -1352,16 +1438,10 @@ document.querySelectorAll(".tab").forEach(tab => {
 
 // Home period selector
 document.querySelectorAll(".home-period-btn").forEach(btn => {
-  // Восстанавливаем активную кнопку из localStorage при загрузке
-  if (btn.dataset.homePeriod === state.homePeriod) {
-    document.querySelectorAll(".home-period-btn").forEach(b => b.classList.remove("active"));
-    btn.classList.add("active");
-  }
   btn.addEventListener("click", () => {
     document.querySelectorAll(".home-period-btn").forEach(b => b.classList.remove("active"));
     btn.classList.add("active");
     state.homePeriod = btn.dataset.homePeriod;
-    localStorage.setItem("ml_homePeriod", state.homePeriod);
     renderAll();
   });
 });
