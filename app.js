@@ -640,6 +640,13 @@ function renderPieChart(el, grouped, type) {
   if (!entries.length) { el.innerHTML = '<div class="empty-state">Нет данных</div>'; return; }
   const total = entries.reduce((s,[,v]) => s + v, 0);
   const colors = type === "income" ? PIE_COLORS_INCOME : PIE_COLORS_EXPENSE;
+  // Лимиты по категориям (только для расходов)
+  const limitsMap = {};
+  if (type === "expense") {
+    state.categoryBudgets.forEach(b => {
+      limitsMap[b.category] = Number(b.budget_amount || b.limit_amount || 0);
+    });
+  }
   const size = 180, cx = 90, cy = 90, r = 72, ir = 44;
   let angle = -Math.PI / 2;
   const slices = entries.map(([cat, amount], i) => {
@@ -658,9 +665,11 @@ function renderPieChart(el, grouped, type) {
   const svgPaths = slices.map(s=>`<path d="${s.path}" fill="${s.col}" stroke="white" stroke-width="1.5" opacity="0.93"/>`).join("");
   const legend = slices.map(s=>{
     const pct = Math.round((s.amount/total)*100);
+    const lim = limitsMap && limitsMap[s.cat] ? limitsMap[s.cat] : 0;
+    const limHtml = lim > 0 ? `<span class="pie-legend-limit ${s.amount > lim ? "over-limit" : ""}">${formatMoney(lim)}</span>` : "";
     return `<div class="pie-legend-item">
       <div class="pie-legend-left"><div class="pie-legend-dot" style="background:${s.col}"></div><span class="pie-legend-name">${categoryMap[s.cat]||s.cat}</span></div>
-      <div class="pie-legend-right"><span class="pie-legend-amount">${formatMoney(s.amount)}</span><span class="pie-legend-pct">${pct}%</span></div>
+      <div class="pie-legend-right">${limHtml}<span class="pie-legend-amount">${formatMoney(s.amount)}</span><span class="pie-legend-pct">${pct}%</span></div>
     </div>`;
   }).join("");
   el.innerHTML = `<div class="pie-wrap">
@@ -776,7 +785,7 @@ function renderCategoryBudgets() {
 
   categoryBudgetListEl.innerHTML = state.categoryBudgets.map(item => {
     const spent = monthExp.filter(e => e.category === item.category).reduce((s, e) => s + Number(e.amount), 0);
-    const limit = Number(item.limit_amount);
+    const limit = Number(item.budget_amount || item.limit_amount);
     const pct = limit > 0 ? Math.min((spent / limit) * 100, 100) : 0;
     return `
       <div class="budget-row">
@@ -796,7 +805,9 @@ function renderRecurring() {
     recurringListEl.innerHTML = '<div class="empty-state">Нет платежей</div>';
     return;
   }
-  recurringListEl.innerHTML = state.recurring.map(item => `
+  const isCollapsed = recurringListEl.dataset.collapsed === "true";
+  const toggleBtn = `<button class="toggle-section-btn" id="recurringToggleBtn">${isCollapsed ? "▼ Показать платежи ("+state.recurring.length+")" : "▲ Свернуть"}</button>`;
+  const itemsHtml = isCollapsed ? "" : state.recurring.map(item => `
     <div class="recurring-item">
       <strong>${item.title}</strong> — ${formatMoney(item.amount)}
       <br /><small>${categoryMap[item.category] || item.category} • ${item.day_of_month} числа</small>
@@ -807,6 +818,12 @@ function renderRecurring() {
       </div>
     </div>
   `).join("");
+  recurringListEl.innerHTML = toggleBtn + itemsHtml;
+  const tb = document.getElementById("recurringToggleBtn");
+  if (tb) tb.addEventListener("click", () => {
+    recurringListEl.dataset.collapsed = recurringListEl.dataset.collapsed === "true" ? "false" : "true";
+    renderRecurring();
+  });
 
   recurringListEl.querySelectorAll("[data-pay-id]").forEach(btn => {
     btn.addEventListener("click", async () => {
@@ -910,16 +927,35 @@ function renderPlannerHistory() {
     plannerHistoryListEl.innerHTML = '<div class="empty-state">Нет выполненных</div>';
     return;
   }
-  plannerHistoryListEl.innerHTML = state.plannerHistory.slice(0, 20).map(item => `
+  const isCollapsed = plannerHistoryListEl.dataset.collapsed === "true";
+  const toggleBtn = `<button class="toggle-section-btn" id="historyToggleBtn">${isCollapsed ? "▼ Показать историю ("+state.plannerHistory.length+")" : "▲ Свернуть"}</button>`;
+  const itemsHtml = isCollapsed ? "" : state.plannerHistory.slice(0, 30).map(item => `
     <div class="task-row done">
       <div class="task-top">
-        <div>
+        <div style="flex:1">
           <div class="operation-type">✅ ${item.title}</div>
           <div class="operation-date">${item.period_type} • ${formatDate(item.completed_at)}</div>
         </div>
+        <button class="delete-btn" style="padding:6px 10px;font-size:12px" data-hist-del="${item.id}">🗑</button>
       </div>
     </div>
   `).join("");
+  plannerHistoryListEl.innerHTML = toggleBtn + itemsHtml;
+  const tb = document.getElementById("historyToggleBtn");
+  if (tb) tb.addEventListener("click", () => {
+    plannerHistoryListEl.dataset.collapsed = plannerHistoryListEl.dataset.collapsed === "true" ? "false" : "true";
+    renderPlannerHistory();
+  });
+  plannerHistoryListEl.querySelectorAll("[data-hist-del]").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      if (!confirm("Удалить из истории?")) return;
+      await supabaseClient.from("planner_task_logs").delete()
+        .eq("id", btn.dataset.histDel).eq("telegram_id", state.telegramId);
+      await loadPlannerHistory();
+      showToast("Удалено из истории");
+      renderPlannerHistory();
+    });
+  });
 }
 
 function renderHabits() {
@@ -1212,16 +1248,16 @@ async function saveMonthlyBudget() {
 
 async function saveCategoryBudget() {
   const category = categoryBudgetCategoryEl.value;
-  const limit_amount = Number(categoryBudgetAmountEl.value);
+  const budget_amount = Number(categoryBudgetAmountEl.value);
   const month_key = getMonthKey();
-  if (!limit_amount || limit_amount <= 0) { showToast("Введите лимит", "error"); return; }
+  if (!budget_amount || budget_amount <= 0) { showToast("Введите лимит", "error"); return; }
 
   const { data } = await supabaseClient.from("category_budgets").select("*")
     .eq("telegram_id", state.telegramId).eq("month_key", month_key).eq("category", category).maybeSingle();
 
   const error = data
-    ? (await supabaseClient.from("category_budgets").update({ limit_amount }).eq("id", data.id)).error
-    : (await supabaseClient.from("category_budgets").insert({ telegram_id: state.telegramId, month_key, category, limit_amount })).error;
+    ? (await supabaseClient.from("category_budgets").update({ budget_amount }).eq("id", data.id)).error
+    : (await supabaseClient.from("category_budgets").insert({ telegram_id: state.telegramId, month_key, category, budget_amount })).error;
 
   if (error) { showToast("Ошибка", "error"); return; }
   categoryBudgetAmountEl.value = "";

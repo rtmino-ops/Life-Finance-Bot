@@ -746,3 +746,40 @@ body.dark .summary-pie-budget-row span { color: #94a3b8; }
 .finance-period-btn.active { background: linear-gradient(135deg,#3b82f6,#2563eb); color: white; box-shadow: 0 4px 12px rgba(37,99,235,0.3); }
 body.dark .finance-period-btn { background: #1e293b; color: #94a3b8; }
 body.dark .finance-period-btn.active { background: linear-gradient(135deg,#3b82f6,#2563eb); color: white; }
+
+/* ===== TOGGLE SECTION BTN ===== */
+.toggle-section-btn {
+  width: 100%;
+  background: #f1f5f9;
+  color: #475569;
+  border: none;
+  border-radius: 12px;
+  padding: 10px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: center;
+  margin-bottom: 10px;
+  transition: background 0.2s;
+}
+.toggle-section-btn:active { background: #e2e8f0; }
+body.dark .toggle-section-btn { background: #1e293b; color: #94a3b8; }
+body.dark .toggle-section-btn:active { background: #334155; }
+
+/* ===== PIE LEGEND LIMIT ===== */
+.pie-legend-limit {
+  font-size: 11px;
+  color: #10b981;
+  background: #dcfce7;
+  border-radius: 6px;
+  padding: 1px 5px;
+  margin-right: 4px;
+  white-space: nowrap;
+  font-weight: 600;
+}
+.pie-legend-limit.over-limit {
+  color: #ef4444;
+  background: #fee2e2;
+}
+body.dark .pie-legend-limit { background: #052e16; color: #34d399; }
+body.dark .pie-legend-limit.over-limit { background: #450a0a; color: #f87171; }

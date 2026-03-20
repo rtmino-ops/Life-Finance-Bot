@@ -118,9 +118,6 @@
         </div>
 
         <div class="menu-grid">
-          <button id="openIncomeBtn2">+ Доход</button>
-          <button id="openExpenseBtn2">+ Расход</button>
-          <button id="openFinanceFiltersBtn">🔍 Фильтры</button>
           <button id="openBudgetBtn">💼 Бюджет</button>
           <button id="openCategoryBudgetBtn">📊 Лимиты</button>
           <button id="openRecurringBtn">🔄 Платежи</button>
@@ -312,6 +309,9 @@
         <h3>🔄 Регулярные платежи</h3>
         <button class="close-btn" data-close="recurringModal">✕</button>
       </div>
+      <div id="recurringList" class="empty-state">Нет регулярных платежей</div>
+      <hr style="margin:16px 0; border:none; border-top:1px solid #e5e7eb;" />
+      <p style="font-weight:700; font-size:14px; margin-bottom:12px;">+ Новый платёж</p>
       <label>Название</label>
       <input type="text" id="recurringTitle" placeholder="Например: аренда" />
       <label>Сумма</label>
@@ -323,8 +323,6 @@
       <label>Комментарий</label>
       <input type="text" id="recurringComment" placeholder="Комментарий" />
       <button id="saveRecurringBtn">💾 Сохранить</button>
-      <hr style="margin:16px 0; border:none; border-top:1px solid #e5e7eb;" />
-      <div id="recurringList" class="empty-state">Нет регулярных платежей</div>
     </div>
   </div>
 
