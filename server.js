@@ -13,66 +13,65 @@ app.use((req, res, next) => {
   next();
 });
 
-const GEMINI_KEY = process.env.GEMINI_API_KEY;
-const GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
+const OPENROUTER_KEY = process.env.OPENROUTER_API_KEY;
+
+// Бесплатная модель с поддержкой фото
+const MODEL = "meta-llama/llama-3.2-11b-vision-instruct:free";
 
 const SYSTEM_PROMPT = `Ты нутрициолог. Оцени калорийность еды.
-Ответь СТРОГО только JSON объектом, без пояснений, без markdown, без символов \`\`\`.
-Пример ответа: {"title":"Тарелка борща","calories":250,"protein":8,"fat":10,"carbs":30,"comment":""}
-Поля: title (строка, макс 40 символов), calories (целое число), protein (целое), fat (целое), carbs (целое), comment (строка, необязательно).
+Ответь СТРОГО только JSON объектом без пояснений, без markdown, без символов \`\`\`.
+Пример: {"title":"Тарелка борща","calories":250,"protein":8,"fat":10,"carbs":30,"comment":"стандартная порция"}
+Поля: title (строка макс 40 символов), calories (целое число), protein (целое), fat (целое), carbs (целое), comment (строка необязательно).
 Только JSON, ничего кроме JSON.`;
 
-async function askGemini(parts) {
-  if (!GEMINI_KEY) throw new Error("GEMINI_API_KEY не задан");
+async function askOpenRouter(messages) {
+  if (!OPENROUTER_KEY) throw new Error("OPENROUTER_API_KEY не задан");
 
-  const url = `${GEMINI_URL}?key=${GEMINI_KEY}`;
-  const response = await fetch(url, {
+  const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Authorization": `Bearer ${OPENROUTER_KEY}`,
+      "Content-Type": "application/json",
+      "HTTP-Referer": process.env.WEB_APP_URL || "https://life-finance-bot.vercel.app",
+      "X-Title": "MoneyLive Calories"
+    },
     body: JSON.stringify({
-      contents: [{ parts }],
-      generationConfig: {
-        temperature: 0.1,
-        maxOutputTokens: 300,
-        responseMimeType: "application/json"
-      }
+      model: MODEL,
+      messages,
+      max_tokens: 300,
+      temperature: 0.1
     })
   });
 
   const raw = await response.text();
-  console.log(`Gemini status: ${response.status}`);
-  console.log(`Gemini raw: ${raw.slice(0, 500)}`);
+  console.log(`OpenRouter status: ${response.status}`);
+  console.log(`OpenRouter raw: ${raw.slice(0, 300)}`);
 
-  if (!response.ok) throw new Error(`Gemini error ${response.status}: ${raw}`);
+  if (!response.ok) throw new Error(`OpenRouter error ${response.status}: ${raw}`);
 
   const data = JSON.parse(raw);
-  return (data.candidates?.[0]?.content?.parts?.[0]?.text || "").trim();
+  return (data.choices?.[0]?.message?.content || "").trim();
 }
 
 function parseJSON(text) {
-  // Убираем все возможные markdown обёртки
-  const clean = text
-    .replace(/```json/gi, "")
-    .replace(/```/g, "")
-    .trim();
-  // Берём первый JSON объект из текста
+  const clean = text.replace(/```json/gi, "").replace(/```/g, "").trim();
   const match = clean.match(/\{[\s\S]*\}/);
-  if (!match) throw new Error(`Нет JSON в ответе: ${clean}`);
+  if (!match) throw new Error(`Нет JSON в ответе: ${clean.slice(0, 200)}`);
   return JSON.parse(match[0]);
 }
 
+// ===== TEXT =====
 app.post("/api/calories/text", async (req, res) => {
   try {
     const { text } = req.body;
     console.log("TEXT request:", text);
     if (!text?.trim()) return res.status(400).json({ error: "Нет текста" });
 
-    const raw = await askGemini([
-      { text: SYSTEM_PROMPT },
-      { text: `Определи калории для: ${text.trim()}` }
+    const raw = await askOpenRouter([
+      { role: "system", content: SYSTEM_PROMPT },
+      { role: "user", content: `Определи калории для: ${text.trim()}` }
     ]);
 
-    console.log("Parsed text:", raw);
     const result = parseJSON(raw);
     console.log("Result:", result);
     res.json(result);
@@ -82,19 +81,30 @@ app.post("/api/calories/text", async (req, res) => {
   }
 });
 
+// ===== PHOTO =====
 app.post("/api/calories/photo", async (req, res) => {
   try {
     const { image, mediaType } = req.body;
     console.log("PHOTO request, type:", mediaType, "size:", image?.length);
     if (!image) return res.status(400).json({ error: "Нет фото" });
 
-    const raw = await askGemini([
-      { text: SYSTEM_PROMPT },
-      { inlineData: { mimeType: mediaType || "image/jpeg", data: image } },
-      { text: "Что на фото? Определи калории для всей еды на фото." }
+    const raw = await askOpenRouter([
+      { role: "system", content: SYSTEM_PROMPT },
+      {
+        role: "user",
+        content: [
+          {
+            type: "image_url",
+            image_url: { url: `data:${mediaType || "image/jpeg"};base64,${image}` }
+          },
+          {
+            type: "text",
+            text: "Что на фото? Определи калории для всей еды."
+          }
+        ]
+      }
     ]);
 
-    console.log("Parsed photo:", raw);
     const result = parseJSON(raw);
     console.log("Result:", result);
     res.json(result);
@@ -105,8 +115,13 @@ app.post("/api/calories/photo", async (req, res) => {
 });
 
 app.get("/health", (req, res) => {
-  res.json({ ok: true, provider: "gemini", key: GEMINI_KEY ? "set" : "MISSING" });
+  res.json({
+    ok: true,
+    provider: "openrouter",
+    model: MODEL,
+    key: OPENROUTER_KEY ? "set" : "MISSING"
+  });
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Calories API (Gemini) on port ${PORT}`));
+app.listen(PORT, () => console.log(`Calories API (OpenRouter) on port ${PORT}`));
