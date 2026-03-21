@@ -7,7 +7,7 @@ if (tg) {
 
 
 // ===== AI CALORIES SERVER =====
-const AI_SERVER_URL = window.AI_SERVER_URL || "https://moneylive-bot.up.railway.app";
+const AI_SERVER_URL = "https://celebrated-insight-production-9d49.up.railway.app";
 
 // ===== CATEGORIES =====
 const incomeCategories = [
@@ -118,7 +118,12 @@ function openModal(modal) {
 }
 
 function closeModal(modal) {
-  if (modal) modal.classList.add("hidden");
+  if (modal) {
+    modal.classList.add("hidden");
+    // Сброс AI флага при закрытии food модала
+    const t = document.getElementById("aiTabText");
+    if (t) delete t.dataset.aiInit;
+  }
 }
 
 // ===== DOM ELEMENTS =====
@@ -1495,6 +1500,9 @@ function initAICalories() {
   const photoPreview = document.getElementById("aiPhotoPreview");
 
   if (!tabText) return;
+  // Уже инициализировано — не вешаем обработчики повторно
+  if (tabText.dataset.aiInit) return;
+  tabText.dataset.aiInit = "1";
 
   let currentPhotoBase64 = null;
   let currentPhotoType = null;
@@ -1765,8 +1773,8 @@ on("openIncomeBtn", () => openFinanceModal("income"));
 on("openExpenseBtn", () => openFinanceModal("expense"));
 on("openIncomeBtn2", () => openFinanceModal("income"));
 on("openExpenseBtn2", () => openFinanceModal("expense"));
-on("openFoodBtn", () => openModal(foodModal));
-on("foodAddBtn", () => openModal(foodModal));
+on("openFoodBtn", () => { openModal(foodModal); initAICalories(); });
+on("foodAddBtn", () => { openModal(foodModal); initAICalories(); });
 on("openSportBtn", () => openModal(sportModal));
 on("sportAddBtn", () => openModal(sportModal));
 on("openRecurringBtn", () => openModal(recurringModal));
