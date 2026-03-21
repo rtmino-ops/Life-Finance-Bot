@@ -5,122 +5,82 @@ const app = express();
 
 app.use(express.json({ limit: "20mb" }));
 
-// CORS — разрешаем запросы с Vercel фронта
+// CORS
 app.use((req, res, next) => {
-  const allowed = process.env.WEB_APP_URL || "*";
-  res.header("Access-Control-Allow-Origin", allowed);
+  res.header("Access-Control-Allow-Origin", "*");
   res.header("Access-Control-Allow-Headers", "Content-Type");
-  res.header("Access-Control-Allow-Methods", "POST, OPTIONS");
+  res.header("Access-Control-Allow-Methods", "POST, GET, OPTIONS");
   if (req.method === "OPTIONS") return res.sendStatus(200);
   next();
 });
 
-const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
+const GEMINI_KEY = process.env.GEMINI_API_KEY;
+const GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent";
 
-// ===== ОБЩАЯ ФУНКЦИЯ ЗАПРОСА К CLAUDE =====
-async function askClaude(messages) {
-  const response = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": ANTHROPIC_KEY,
-      "anthropic-version": "2023-06-01"
-    },
-    body: JSON.stringify({
-      model: "claude-haiku-4-5-20251001",
-      max_tokens: 300,
-      messages
-    })
-  });
-
-  if (!response.ok) {
-    const err = await response.text();
-    throw new Error(`Claude API error: ${response.status} — ${err}`);
-  }
-
-  const data = await response.json();
-  return data.content?.[0]?.text || "";
-}
-
-// ===== СИСТЕМНЫЙ ПРОМПТ =====
-const SYSTEM_PROMPT = `Ты нутрициолог-помощник. Твоя задача — оценить калорийность еды.
-Отвечай ТОЛЬКО в формате JSON, без объяснений, без markdown, без \`\`\`.
-Формат ответа:
+const SYSTEM_PROMPT = `Ты нутрициолог-помощник. Оцени калорийность еды.
+Отвечай ТОЛЬКО в формате JSON без markdown и без \`\`\`.
+Формат:
 {
-  "title": "короткое название блюда/продуктов (макс 40 символов)",
-  "calories": число_калорий_целое,
+  "title": "короткое название (макс 40 символов)",
+  "calories": целое_число,
   "protein": граммы_белка_целое,
   "fat": граммы_жира_целое,
   "carbs": граммы_углеводов_целое,
-  "comment": "короткая заметка (необязательно, макс 60 символов)"
+  "comment": "короткая заметка (макс 60 символов, необязательно)"
 }
-Калории должны быть реалистичной оценкой для указанного количества еды.
 Если количество не указано — используй стандартную порцию.
-Отвечай только JSON, ничего больше.`;
+Только JSON, ничего больше.`;
 
-// ===== /api/calories/text — по описанию =====
+async function askGemini(parts) {
+  const url = `${GEMINI_URL}?key=${GEMINI_KEY}`;
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      contents: [{ parts }],
+      generationConfig: { temperature: 0.2, maxOutputTokens: 300 }
+    })
+  });
+  if (!response.ok) {
+    const err = await response.text();
+    throw new Error(`Gemini error ${response.status}: ${err}`);
+  }
+  const data = await response.json();
+  return (data.candidates?.[0]?.content?.parts?.[0]?.text || "").trim();
+}
+
 app.post("/api/calories/text", async (req, res) => {
   try {
     const { text } = req.body;
-    if (!text || !text.trim()) {
-      return res.status(400).json({ error: "Нет текста" });
-    }
-
-    const raw = await askClaude([
-      {
-        role: "user",
-        content: `${SYSTEM_PROMPT}\n\nОпредели калории для: ${text.trim()}`
-      }
+    if (!text?.trim()) return res.status(400).json({ error: "Нет текста" });
+    const raw = await askGemini([
+      { text: SYSTEM_PROMPT },
+      { text: `Определи калории для: ${text.trim()}` }
     ]);
-
-    const result = JSON.parse(raw.trim());
-    res.json(result);
+    res.json(JSON.parse(raw.replace(/```json|```/g, "").trim()));
   } catch (e) {
-    console.error("calories/text error:", e.message);
+    console.error("text error:", e.message);
     res.status(500).json({ error: "Не удалось определить калории" });
   }
 });
 
-// ===== /api/calories/photo — по фото (base64) =====
 app.post("/api/calories/photo", async (req, res) => {
   try {
     const { image, mediaType } = req.body;
-    if (!image) {
-      return res.status(400).json({ error: "Нет фото" });
-    }
-
-    const raw = await askClaude([
-      {
-        role: "user",
-        content: [
-          {
-            type: "image",
-            source: {
-              type: "base64",
-              media_type: mediaType || "image/jpeg",
-              data: image
-            }
-          },
-          {
-            type: "text",
-            text: `${SYSTEM_PROMPT}\n\nЧто на фото? Определи калории для всей еды на фото.`
-          }
-        ]
-      }
+    if (!image) return res.status(400).json({ error: "Нет фото" });
+    const raw = await askGemini([
+      { text: SYSTEM_PROMPT },
+      { inlineData: { mimeType: mediaType || "image/jpeg", data: image } },
+      { text: "Что на фото? Определи калории для всей еды." }
     ]);
-
-    const result = JSON.parse(raw.trim());
-    res.json(result);
+    res.json(JSON.parse(raw.replace(/```json|```/g, "").trim()));
   } catch (e) {
-    console.error("calories/photo error:", e.message);
-    res.status(500).json({ error: "Не удалось распознать еду на фото" });
+    console.error("photo error:", e.message);
+    res.status(500).json({ error: "Не удалось распознать фото" });
   }
 });
 
-// ===== Healthcheck =====
-app.get("/health", (req, res) => res.json({ ok: true }));
+app.get("/health", (req, res) => res.json({ ok: true, provider: "gemini" }));
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`🍽 Calories API server running on port ${PORT}`);
-});
+app.listen(PORT, () => console.log(`Calories API (Gemini) on port ${PORT}`));
