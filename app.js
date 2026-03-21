@@ -123,6 +123,13 @@ function closeModal(modal) {
     // Сброс AI флага при закрытии food модала
     const t = document.getElementById("aiTabText");
     if (t) delete t.dataset.aiInit;
+    // Сброс БЖУ data-val
+    ["foodProtein","foodFat","foodCarbs"].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) { el.dataset.val = 0; el.textContent = ""; }
+    });
+    const macros = document.getElementById("foodMacros");
+    if (macros) macros.classList.add("hidden");
   }
 }
 
@@ -539,7 +546,11 @@ function renderFood() {
     foodListEl.innerHTML = '<div class="empty-state">Нет записей</div>';
     return;
   }
-  foodListEl.innerHTML = state.food.map(item => `
+  foodListEl.innerHTML = state.food.map(item => {
+    const macros = (item.protein || item.fat || item.carbs)
+      ? `<span class="food-macro-badge">Б${item.protein||0} Ж${item.fat||0} У${item.carbs||0}</span>`
+      : "";
+    return `
     <div class="operation-item">
       <div class="operation-top">
         <div>
@@ -547,12 +558,14 @@ function renderFood() {
           <div class="operation-date">${formatDate(item.created_at)}</div>
         </div>
       </div>
-      <div class="operation-meta">${item.calories || 0} ккал</div>
+      <div class="operation-meta food-meta-row">
+        <strong>${item.calories || 0} ккал</strong>${macros}
+      </div>
       <div class="operation-actions">
         <button class="delete-btn" data-food-del="${item.id}">🗑 Удалить</button>
       </div>
-    </div>
-  `).join("");
+    </div>`;
+  }).join("");
 
   foodListEl.querySelectorAll("[data-food-del]").forEach(btn => {
     btn.addEventListener("click", async () => {
@@ -1454,10 +1467,13 @@ async function saveFood() {
   const meal_type = foodTypeInput.value;
   const title = foodNameInput.value.trim();
   const calories = Number(foodCaloriesInput.value || 0);
+  const protein = Number(document.getElementById("foodProtein")?.dataset.val || 0);
+  const fat = Number(document.getElementById("foodFat")?.dataset.val || 0);
+  const carbs = Number(document.getElementById("foodCarbs")?.dataset.val || 0);
   if (!title) { showToast("Введите блюдо", "error"); return; }
 
   const { error } = await supabaseClient.from("food_records").insert({
-    telegram_id: state.telegramId, meal_type, title, calories
+    telegram_id: state.telegramId, meal_type, title, calories, protein, fat, carbs
   });
   if (error) { showToast("Ошибка", "error"); return; }
   foodNameInput.value = "";
@@ -1592,9 +1608,12 @@ function initAICalories() {
     // БЖУ
     const macros = document.getElementById("foodMacros");
     if (data.protein || data.fat || data.carbs) {
-      document.getElementById("foodProtein").textContent = `Б: ${data.protein || 0}г`;
-      document.getElementById("foodFat").textContent = `Ж: ${data.fat || 0}г`;
-      document.getElementById("foodCarbs").textContent = `У: ${data.carbs || 0}г`;
+      const pEl = document.getElementById("foodProtein");
+      const fEl = document.getElementById("foodFat");
+      const cEl = document.getElementById("foodCarbs");
+      pEl.textContent = `Б: ${data.protein || 0}г`; pEl.dataset.val = data.protein || 0;
+      fEl.textContent = `Ж: ${data.fat || 0}г`;     fEl.dataset.val = data.fat || 0;
+      cEl.textContent = `У: ${data.carbs || 0}г`;   cEl.dataset.val = data.carbs || 0;
       macros.classList.remove("hidden");
     }
     // Показываем результат
