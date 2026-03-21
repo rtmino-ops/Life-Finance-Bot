@@ -16,7 +16,11 @@ app.use((req, res, next) => {
 const OPENROUTER_KEY = process.env.OPENROUTER_API_KEY;
 
 // Бесплатная модель с поддержкой фото
-const MODEL = "mistralai/mistral-small-3.1-24b-instruct:free";
+const MODELS = [
+  "mistralai/mistral-small-3.1-24b-instruct:free",
+  "nvidia/llama-3.1-nemotron-nano-8b-v1:free",
+  "google/gemma-3-12b-it:free"
+];
 
 const SYSTEM_PROMPT = `Ты нутрициолог. Оцени калорийность еды.
 Ответь СТРОГО только JSON объектом без пояснений, без markdown, без символов \`\`\`.
@@ -27,30 +31,52 @@ const SYSTEM_PROMPT = `Ты нутрициолог. Оцени калорийн�
 async function askOpenRouter(messages) {
   if (!OPENROUTER_KEY) throw new Error("OPENROUTER_API_KEY не задан");
 
-  const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${OPENROUTER_KEY}`,
-      "Content-Type": "application/json",
-      "HTTP-Referer": process.env.WEB_APP_URL || "https://life-finance-bot.vercel.app",
-      "X-Title": "MoneyLive Calories"
-    },
-    body: JSON.stringify({
-      model: MODEL,
-      messages,
-      max_tokens: 300,
-      temperature: 0.1
-    })
-  });
+  let lastError = null;
+  for (const model of MODELS) {
+    try {
+      console.log(`Trying model: ${model}`);
+      const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${OPENROUTER_KEY}`,
+          "Content-Type": "application/json",
+          "HTTP-Referer": process.env.WEB_APP_URL || "https://life-finance-bot.vercel.app",
+          "X-Title": "MoneyLive Calories"
+        },
+        body: JSON.stringify({
+          model,
+          messages,
+          max_tokens: 300,
+          temperature: 0.1
+        })
+      });
 
-  const raw = await response.text();
-  console.log(`OpenRouter status: ${response.status}`);
-  console.log(`OpenRouter raw: ${raw.slice(0, 300)}`);
+      const raw = await response.text();
+      console.log(`Model ${model} status: ${response.status}`);
 
-  if (!response.ok) throw new Error(`OpenRouter error ${response.status}: ${raw}`);
+      if (response.status === 429 || response.status === 503) {
+        console.log(`Model ${model} rate limited, trying next...`);
+        lastError = new Error(`Rate limited: ${model}`);
+        continue;
+      }
 
-  const data = JSON.parse(raw);
-  return (data.choices?.[0]?.message?.content || "").trim();
+      if (!response.ok) {
+        console.log(`Model ${model} error: ${raw.slice(0, 200)}`);
+        lastError = new Error(`Error ${response.status}: ${raw.slice(0, 200)}`);
+        continue;
+      }
+
+      const data = JSON.parse(raw);
+      const text = (data.choices?.[0]?.message?.content || "").trim();
+      if (!text) { lastError = new Error("Пустой ответ"); continue; }
+      console.log(`Success with model: ${model}`);
+      return text;
+    } catch (e) {
+      lastError = e;
+      console.log(`Model ${model} exception: ${e.message}`);
+    }
+  }
+  throw lastError || new Error("Все модели недоступны");
 }
 
 function parseJSON(text) {
