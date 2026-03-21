@@ -16,7 +16,7 @@ app.use((req, res, next) => {
 const OPENROUTER_KEY = process.env.OPENROUTER_API_KEY;
 
 // Бесплатная модель с поддержкой фото
-const MODEL = "google/gemma-3-27b-it:free";
+const MODEL = "mistralai/mistral-small-3.1-24b-instruct:free";
 
 const SYSTEM_PROMPT = `Ты нутрициолог. Оцени калорийность еды.
 Ответь СТРОГО только JSON объектом без пояснений, без markdown, без символов \`\`\`.
@@ -68,8 +68,7 @@ app.post("/api/calories/text", async (req, res) => {
     if (!text?.trim()) return res.status(400).json({ error: "Нет текста" });
 
     const raw = await askOpenRouter([
-      { role: "system", content: SYSTEM_PROMPT },
-      { role: "user", content: `Определи калории для: ${text.trim()}` }
+      { role: "user", content: `${SYSTEM_PROMPT}\n\nОпредели калории для: ${text.trim()}` }
     ]);
 
     const result = parseJSON(raw);
@@ -89,7 +88,6 @@ app.post("/api/calories/photo", async (req, res) => {
     if (!image) return res.status(400).json({ error: "Нет фото" });
 
     const raw = await askOpenRouter([
-      { role: "system", content: SYSTEM_PROMPT },
       {
         role: "user",
         content: [
@@ -99,7 +97,7 @@ app.post("/api/calories/photo", async (req, res) => {
           },
           {
             type: "text",
-            text: "Что на фото? Определи калории для всей еды."
+            text: `${SYSTEM_PROMPT}\n\nЧто на фото? Определи калории для всей еды на фото.`
           }
         ]
       }
