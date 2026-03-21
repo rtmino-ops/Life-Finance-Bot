@@ -16,7 +16,7 @@ app.use((req, res, next) => {
 const OPENROUTER_KEY = process.env.OPENROUTER_API_KEY;
 
 // Бесплатная модель с поддержкой фото
-const MODEL = "openrouter/auto";
+const MODEL = "qwen/qwen2.5-vl-72b-instruct:free";
 
 const SYSTEM_PROMPT = `Ты нутрициолог. Оцени калорийность еды.
 Ответь СТРОГО только JSON объектом без пояснений, без markdown, без символов \`\`\`.
