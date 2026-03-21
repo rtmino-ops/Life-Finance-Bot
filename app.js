@@ -5,6 +5,10 @@ if (tg) {
   tg.ready();
 }
 
+
+// ===== AI CALORIES SERVER =====
+const AI_SERVER_URL = window.AI_SERVER_URL || "https://moneylive-bot.up.railway.app";
+
 // ===== CATEGORIES =====
 const incomeCategories = [
   { value: "salary", label: "💼 Зарплата" },
@@ -1474,6 +1478,129 @@ async function saveSport() {
   await loadSport();
   showToast("Тренировка добавлена 💪");
   renderAll();
+}
+
+
+// ===== AI CALORIES =====
+function initAICalories() {
+  const tabText = document.getElementById("aiTabText");
+  const tabPhoto = document.getElementById("aiTabPhoto");
+  const textBlock = document.getElementById("aiTextInput");
+  const photoBlock = document.getElementById("aiPhotoInput");
+  const resultBlock = document.getElementById("aiResult");
+  const analyzeTextBtn = document.getElementById("aiAnalyzeTextBtn");
+  const analyzePhotoBtn = document.getElementById("aiAnalyzePhotoBtn");
+  const photoFile = document.getElementById("aiPhotoFile");
+  const photoArea = document.getElementById("aiPhotoArea");
+  const photoPreview = document.getElementById("aiPhotoPreview");
+
+  if (!tabText) return;
+
+  let currentPhotoBase64 = null;
+  let currentPhotoType = null;
+
+  // Переключение вкладок
+  tabText.addEventListener("click", () => {
+    tabText.classList.add("active"); tabPhoto.classList.remove("active");
+    textBlock.classList.remove("hidden"); photoBlock.classList.add("hidden");
+    resultBlock.classList.add("hidden");
+  });
+  tabPhoto.addEventListener("click", () => {
+    tabPhoto.classList.add("active"); tabText.classList.remove("active");
+    photoBlock.classList.remove("hidden"); textBlock.classList.add("hidden");
+    resultBlock.classList.add("hidden");
+  });
+
+  // Клик на зону фото
+  photoArea.addEventListener("click", () => photoFile.click());
+  photoFile.addEventListener("change", (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const dataUrl = ev.target.result;
+      currentPhotoBase64 = dataUrl.split(",")[1];
+      currentPhotoType = file.type || "image/jpeg";
+      photoPreview.innerHTML = `<img src="${dataUrl}" style="max-width:100%;max-height:180px;border-radius:12px;object-fit:cover;" />`;
+      analyzePhotoBtn.disabled = false;
+    };
+    reader.readAsDataURL(file);
+  });
+
+  // Анализ текста
+  analyzeTextBtn.addEventListener("click", async () => {
+    const query = document.getElementById("aiTextQuery").value.trim();
+    if (!query) { showToast("Опишите что вы ели", "error"); return; }
+    analyzeTextBtn.textContent = "⏳ Анализирую...";
+    analyzeTextBtn.disabled = true;
+    resultBlock.classList.add("hidden");
+    try {
+      const resp = await fetch(`${AI_SERVER_URL}/api/calories/text`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: query })
+      });
+      if (!resp.ok) throw new Error("Ошибка сервера");
+      const data = await resp.json();
+      applyAIResult(data);
+    } catch (e) {
+      showToast("Не удалось определить калории", "error");
+      console.error(e);
+    } finally {
+      analyzeTextBtn.textContent = "🤖 Определить калории";
+      analyzeTextBtn.disabled = false;
+    }
+  });
+
+  // Анализ фото
+  analyzePhotoBtn.addEventListener("click", async () => {
+    if (!currentPhotoBase64) return;
+    analyzePhotoBtn.textContent = "⏳ Анализирую фото...";
+    analyzePhotoBtn.disabled = true;
+    resultBlock.classList.add("hidden");
+    try {
+      const resp = await fetch(`${AI_SERVER_URL}/api/calories/photo`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ image: currentPhotoBase64, mediaType: currentPhotoType })
+      });
+      if (!resp.ok) throw new Error("Ошибка сервера");
+      const data = await resp.json();
+      applyAIResult(data);
+    } catch (e) {
+      showToast("Не удалось распознать фото", "error");
+      console.error(e);
+    } finally {
+      analyzePhotoBtn.textContent = "🤖 Определить по фото";
+      analyzePhotoBtn.disabled = false;
+    }
+  });
+
+  function applyAIResult(data) {
+    if (!data || !data.calories) { showToast("Не удалось разобрать ответ", "error"); return; }
+    // Заполняем поля
+    document.getElementById("foodName").value = data.title || "";
+    document.getElementById("foodCalories").value = data.calories || 0;
+    // БЖУ
+    const macros = document.getElementById("foodMacros");
+    if (data.protein || data.fat || data.carbs) {
+      document.getElementById("foodProtein").textContent = `Б: ${data.protein || 0}г`;
+      document.getElementById("foodFat").textContent = `Ж: ${data.fat || 0}г`;
+      document.getElementById("foodCarbs").textContent = `У: ${data.carbs || 0}г`;
+      macros.classList.remove("hidden");
+    }
+    // Показываем результат
+    resultBlock.innerHTML = `
+      <div class="ai-result-row">
+        <span class="ai-result-title">${data.title}</span>
+        <span class="ai-result-cal">${data.calories} ккал</span>
+      </div>
+      ${data.protein ? `<div class="ai-result-macros">Б ${data.protein}г · Ж ${data.fat}г · У ${data.carbs}г</div>` : ""}
+      ${data.comment ? `<div class="ai-result-comment">${data.comment}</div>` : ""}
+    `;
+    resultBlock.classList.remove("hidden");
+    showToast("✅ Данные заполнены — проверь и сохрани");
+  }
 }
 
 // ===== INIT APP =====

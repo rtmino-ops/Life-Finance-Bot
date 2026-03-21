@@ -199,6 +199,37 @@
         <h3>🍽 Добавить прием пищи</h3>
         <button class="close-btn" data-close="foodModal">✕</button>
       </div>
+
+      <!-- AI блок -->
+      <div class="ai-food-block">
+        <div class="ai-food-tabs">
+          <button class="ai-tab active" id="aiTabText">✏️ Текст</button>
+          <button class="ai-tab" id="aiTabPhoto">📷 Фото</button>
+        </div>
+
+        <!-- Текстовый ввод -->
+        <div id="aiTextInput">
+          <input type="text" id="aiTextQuery" placeholder="Например: тарелка борща и хлеб" />
+          <button class="action-btn blue" id="aiAnalyzeTextBtn" style="width:100%;padding:12px;font-size:14px;">🤖 Определить калории</button>
+        </div>
+
+        <!-- Фото ввод -->
+        <div id="aiPhotoInput" class="hidden">
+          <div class="ai-photo-area" id="aiPhotoArea">
+            <input type="file" id="aiPhotoFile" accept="image/*" capture="environment" style="display:none" />
+            <div id="aiPhotoPreview" class="ai-photo-placeholder">
+              📷 Нажмите чтобы сфотографировать еду
+            </div>
+          </div>
+          <button class="action-btn blue" id="aiAnalyzePhotoBtn" style="width:100%;padding:12px;font-size:14px;margin-top:8px;" disabled>🤖 Определить по фото</button>
+        </div>
+
+        <!-- Результат AI -->
+        <div id="aiResult" class="hidden ai-result-block"></div>
+      </div>
+
+      <hr style="margin:16px 0;border:none;border-top:1px solid #e5e7eb;" />
+
       <label>Тип приема пищи</label>
       <select id="foodType">
         <option value="Завтрак">🌅 Завтрак</option>
@@ -210,6 +241,11 @@
       <input type="text" id="foodName" placeholder="Например: овсянка, яблоко" />
       <label>Калории</label>
       <input type="number" id="foodCalories" placeholder="Калории" inputmode="numeric" />
+      <div id="foodMacros" class="food-macros hidden">
+        <span id="foodProtein">Б: —</span>
+        <span id="foodFat">Ж: —</span>
+        <span id="foodCarbs">У: —</span>
+      </div>
       <button id="saveFoodBtn">💾 Сохранить</button>
     </div>
   </div>

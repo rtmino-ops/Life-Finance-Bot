@@ -4,11 +4,14 @@
   "description": "Telegram mini app for finance, planner and habits",
   "main": "bot.js",
   "scripts": {
-    "start-bot": "node bot.js"
+    "start-bot": "node bot.js",
+    "start-server": "node server.js",
+    "start": "node server.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.1",
     "dotenv": "^16.6.1",
+    "express": "^4.18.2",
     "node-telegram-bot-api": "^0.66.0"
   }
 }
